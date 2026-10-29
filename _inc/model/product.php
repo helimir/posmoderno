@@ -375,18 +375,21 @@ class ModelProduct extends Model
 			$args[] = $data['filter_name'] . '%';
 		}
 
-		if (isset($data['filter_purchase_price']) && isset($data['filter_sell_price'])) {
-			$sql .= " AND `p`.`purchase_price` LIKE ?";
+		if (isset($data['filter_purchase_price'])) {
+			// El precio de compra vive en product_to_store, no en products.
+			$sql .= " AND `p2s`.`purchase_price` LIKE ?";
 			$args[] = $data['filter_purchase_price'] . '%';
 		}
 
-		if (isset($data['filter_sell_price']) && isset($data['filter_sell_price'])) {
-			$sql .= " AND `p`.`sell_price` LIKE ?";
+		if (isset($data['filter_sell_price'])) {
+			// El precio de venta vive en product_to_store, no en products.
+			$sql .= " AND `p2s`.`sell_price` LIKE ?";
 			$args[] = $data['filter_sell_price'] . '%';
 		}
 
-		if (isset($data['filter_quantity']) && isset($data['filter_quantity'])) {
-			$sql .= " AND `p`.`quantity_in_stock` = '" . (int)$data['filter_quantity'] . "'";
+		if (isset($data['filter_quantity'])) {
+			// El stock vive en product_to_store, no en products.
+			$sql .= " AND `p2s`.`quantity_in_stock` = '" . (int)$data['filter_quantity'] . "'";
 		}
 
 		if (isset($data['filter_status']) && isset($data['filter_status'])) {

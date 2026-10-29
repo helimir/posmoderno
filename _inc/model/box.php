@@ -167,7 +167,8 @@ class ModelBox extends Model
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `box_id` != ?";
+			// `box_id` existe en `boxes` y en `box_to_store`: hay que cualificarlo.
+			$sql .= " AND `boxes`.`box_id` != ?";
 			$args[] = $data['exclude'];
 		}
 

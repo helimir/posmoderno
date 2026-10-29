@@ -210,19 +210,39 @@ The server verifies in this order: known client → timestamp within `SYNC_MAX_A
 
 ---
 
-## Known broken listing filters (pre-existing, unrelated to security)
+## Listing filters: how they work
 
-These filters were already broken before the SQL-injection fix and still are. They are dead code today — no caller passes the filter that triggers them — so nothing in the UI depends on them:
+Every listing method (`getProducts`, `getCustomers`, …) takes an optional `$data` array of filters and builds one SQL string with an `$args` array. The pattern to follow:
 
-| Filter | Problem |
-|---|---|
-| `getBanners()` | queries table `banners`; the table is `banner` |
-| `getLoans()` | filters on column `loan_name`, which does not exist |
-| `getProducts()` | filters on `p.purchase_price` / `p.sell_price` / `p.quantity_in_stock`; those columns live in `product_to_store` (`p2s`), not `products` |
-| `getBoxes()` | `exclude` uses `box_id`, ambiguous between `boxes` and `box_to_store` |
-| `getProducts()` | `filter_purchase_price` only applies when `filter_sell_price` is also set (copy/paste bug), so it never filters on its own |
+```php
+$sql = "SELECT … WHERE `x`.`y` = ? AND `status` = ?";
+$args = array($store_id, 1);
 
-They were parameterised like the rest, so fixing them is now a one-line change per filter — but do not "fix" them incidentally in an unrelated change.
+if (isset($data['filter_name'])) {
+    $sql .= " AND `x`.`y` LIKE ?";
+    $args[] = $data['filter_name'] . '%';
+}
+
+$statement = $this->db->prepare($sql);
+$statement->execute($args);
+```
+
+- The `$args` order must match the order of the `?` placeholders in the final SQL. Base placeholders first, then filters in the order they are appended.
+- `ORDER BY` uses an `in_array($data['sort'], $sort_data)` allowlist. The `else` branch is a **hardcoded fallback that always runs** — if its column does not exist, the whole listing breaks, not just one filter. Same for the `$sort_data` allowlist entries.
+- The frontend never sends `filter_*`; the templates call these helpers with literal values (`get_customers(array('exclude' => 1))`). So a broken filter shows up as a SQL error in a dropdown, not as a wrong result.
+
+**Schema gotchas that broke these filters (all fixed, do not reintroduce):**
+
+| Filter | Was | Now |
+|---|---|---|
+| `getLoans()` | `loan_name` (does not exist; also in the `ORDER BY` fallback) | `title` |
+| `getProducts()` | `p.purchase_price`, `p.sell_price`, `p.quantity_in_stock` | `p2s.*` — prices and stock live in `product_to_store` |
+| `getBoxes()` | `box_id` (ambiguous between `boxes` and `box_to_store`) | `boxes.box_id` |
+| `getBanners()` | `parent_id` (banners are not hierarchical; copy/paste from `category.php`) | removed |
+| `getProducts()` | `filter_purchase_price` only applied when `filter_sell_price` was also set | applies on its own |
+| `getBanners()`, `getLoans()`, `getProducts()` | `id` ambiguous / missing `WHERE` | qualified, `WHERE 1=1` added |
+
+The banner tables (`banners`, `banner_to_store`, `banner_images`) were **not shipped** by the vendor — not in the SQL dump, not in the v2→v3 migrations — even though `_inc/model/banner.php` uses them. They are created by `update/2026-10-29-banners.sql`.
 
 ---
 

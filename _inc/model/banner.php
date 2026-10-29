@@ -179,12 +179,9 @@ class ModelBanner extends Model
 		$sql = "SELECT * FROM `banners` LEFT JOIN `banner_to_store` b2s ON (`banners`.`id` = `b2s`.`banner_id`) WHERE `b2s`.`store_id` = ? AND `b2s`.`status` = ?";
 		$args = array($store_id, 1);
 
-		if (isset($data['filter_parent_id'])) {
-			$sql .= " AND `parent_id` = ?";
-			$args[] = $data['filter_parent_id'];
-		} elseif (!isset($data['filter_fetch_all'])) {
-			$sql .= " AND `parent_id` = 0";
-		}
+		// Los banners no son jerarquicos: no existe columna parent_id. El bloque
+		// que habia aqui era un copy/paste de category.php y hacia fallar la
+		// consulta aunque la tabla existiera.
 
 		if (isset($data['filter_name'])) {
 			$sql .= " AND `name` LIKE ?";
@@ -192,14 +189,15 @@ class ModelBanner extends Model
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			// `id` existe en `banners` y en `banner_to_store`: hay que cualificarlo.
+			$sql .= " AND `banners`.`id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
 			foreach ($data['only'] as $only_id) {
 				$args[] = $only_id;
 			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `id` != ?";
+			$sql .= " AND `banners`.`id` != ?";
 			$args[] = $data['exclude'];
 		}
 

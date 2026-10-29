@@ -182,7 +182,9 @@ class ModelLoan extends Model
 		$args = array(1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `loan_name` LIKE ?";
+			// La tabla loans no tiene columna loan_name: el titulo del prestamo
+			// esta en `title`.
+			$sql .= " AND `title` LIKE ?";
 			$args[] = $data['filter_name'] . '%';
 		}
 
@@ -194,13 +196,13 @@ class ModelLoan extends Model
 		$sql .= " GROUP BY `loans`.`loan_id`";
 
 		$sort_data = array(
-			'loan_name'
+			'title'
 		);
 
 		if (isset($data['sort']) && in_array($data['sort'], $sort_data)) {
 			$sql .= " ORDER BY " . $data['sort'];
 		} else {
-			$sql .= " ORDER BY `loan_name`";
+			$sql .= " ORDER BY `title`";
 		}
 
 		if (isset($data['order']) && ($data['order'] == 'DESC')) {
