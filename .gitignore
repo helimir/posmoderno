@@ -4,6 +4,9 @@ old/
 storage/
 storage/qrcode.png
 /config.php
+.env
+.env.local
+.env.*.local
 error_log
 access.log
 error.log
