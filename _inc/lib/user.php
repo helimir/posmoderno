@@ -19,6 +19,9 @@ class User
 	private $username;
 	private $permission = array();
 	private $preference = array();
+	private $db;
+	private $request;
+	private $session;
 
 	public function __construct($registry)
 	{

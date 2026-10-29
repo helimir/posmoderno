@@ -171,7 +171,7 @@ function get_total_day_in_month()
 
 function limit_char($string, $max = 255)
 {
-   if(mb_strlen($string, 'utf-8') >= $max){
+   if(mb_strlen((string) $string, 'utf-8') >= $max){
        $string = mb_substr($string, 0, $max - 5, 'utf-8').'...';
    } 
 

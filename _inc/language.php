@@ -318,7 +318,7 @@ $columns = array(
     'db' => 'lang_value',   
     'dt' => 'lang_value' ,
     'formatter' => function($d, $row) {
-        return '<input id="value'.$row['id'].'" class="form-control" type="text" style="width:100%;max-width:100%;padding:2px 4px;" name="lang_value['.$row['lang_id'].']['.$row['id'].']" value="'.trim($row['lang_value']).'">';
+        return '<input id="value'.$row['id'].'" class="form-control" type="text" style="width:100%;max-width:100%;padding:2px 4px;" name="lang_value['.$row['lang_id'].']['.$row['id'].']" value="'.trim($row['lang_value'] ?? '').'">';
     }
   ),
   array( 

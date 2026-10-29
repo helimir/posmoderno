@@ -16,6 +16,8 @@ class Currency
 {
 	private $code;
 	private $currencies = array();
+	private $db;
+	private $request;
 
 	public function __construct($registry) 
 	{

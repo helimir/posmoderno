@@ -236,7 +236,7 @@ function countrySelector($defaultCountry = "", $id = "", $name = "", $classes = 
     $output = "<select id='".$id."' name='".$name."' class='".$classes."'>";
 	foreach($countryArray as $code => $country) {
 		$countryName = ucwords(strtolower($country["name"]));
-		$output .= "<option value='".$code."' ".(($code==strtoupper($defaultCountry))?"selected":"").">".$code." - ".$countryName." (+".$country["code"].")</option>";
+		$output .= "<option value='".$code."' ".(($code==strtoupper((string) $defaultCountry))?"selected":"").">".$code." - ".$countryName." (+".$country["code"].")</option>";
 	}
 	$output .= "</select>";
 	return $output;
@@ -285,7 +285,7 @@ function stateSelector($defaultState = "", $id = "", $name = "", $classes = "") 
     $output = "<select id='".$id."' name='".$name."' class='".$classes."'>";
 	foreach($stateArray as $code => $state){
 		$stateName = ucwords(strtolower($state));
-		$output .= "<option value='".$code."' ".(($code==strtoupper($defaultState))?"selected":"").">".$stateName."</option>";
+		$output .= "<option value='".$code."' ".(($code==strtoupper((string) $defaultState))?"selected":"").">".$stateName."</option>";
 	}
 	$output .= "</select>";
 	return $output;

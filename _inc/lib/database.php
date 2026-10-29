@@ -34,7 +34,24 @@ class Database extends PDO
       	parent::__construct($dsn, $username, $password, $options);
    	}
 
-   	public function prepare($statement, $option = array())
+   	/**
+	 * IMPORTANT: this method deliberately returns $this (the Database wrapper) instead
+	 * of a PDOStatement. The entire codebase depends on that contract:
+	 *
+	 *     $statement = db()->prepare("SELECT ...");
+	 *     $statement->execute(array($id));
+	 *     $row = $statement->fetch(PDO::FETCH_ASSOC);
+	 *
+	 * Because the wrapper holds a single statement slot ($this->db), only ONE
+	 * statement can be live at a time: a second prepare() before execute()/fetch()
+	 * clobbers the first one.
+	 *
+	 * The return type is intentionally incompatible with PDO::prepare(), so PHP 8.1+
+	 * requires #[\ReturnTypeWillChange] to silence the deprecation notice.
+	 * DO NOT "fix" this by changing the return type -- it would break every caller.
+	 */
+	#[\ReturnTypeWillChange]
+	public function prepare($statement, $option = array())
 	{
 		$this->statement = $statement;
 		$this->option = $option;
@@ -81,7 +98,7 @@ class Database extends PDO
 		return $this->db->rowCount();
 	}
 
-	public function lastInsertId($seqname = NULL) 
+	public function lastInsertId(?string $seqname = null): string|false
 	{
 		return parent::lastInsertId($seqname);
 	}
