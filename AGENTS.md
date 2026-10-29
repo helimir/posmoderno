@@ -11,8 +11,7 @@ Vendored PHP libs live in `_inc/vendor/`.
 ## Setup
 
 1. Import `BASE DE DATOS/pos_moderno.sql` into a MySQL/MariaDB DB (phpMyAdmin). **There is no installer** — `install/` does not exist.
-2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.
-3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
+2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
    - `SUBDIRECTORY` is derived from the path of `APP_URL` unless `APP_SUBDIRECTORY` is set explicitly.
    - `FILEMANAGERURL` defaults to `APP_URL . '/storage/products'`.
 4. Serve over Apache/PHP (`.htaccess` sets `max_execution_time 600`; needs `AllowOverride`).
@@ -254,6 +253,18 @@ $statement->execute($args);
 | `getBanners()`, `getLoans()`, `getProducts()` | `id` ambiguous / missing `WHERE` | qualified, `WHERE 1=1` added |
 
 The banner tables (`banners`, `banner_to_store`, `banner_images`) were **not shipped** by the vendor — not in the SQL dump, not in the v2→v3 migrations — even though `_inc/model/banner.php` uses them. They are created by `update/2026-10-29-banners.sql`.
+
+---
+
+## i18n (translations)
+
+- `trans('key')` → `_inc/lib/language.php` → the `language_translations` row for the **active language** (`lang_id`). If the row is missing or its `lang_value` is NULL, the key is humanized and shown as English-looking text.
+- The active language comes from the **user preference** (`users.preference['language']`). For an anonymous visitor (the login screen) it falls back to `APP_DEFAULT_LANGUAGE` in `.env`.
+- `Document::langTag()` maps the language **code** to the `<html lang>` attribute; it accepts both the code (`es`) and the name (`spanish`).
+- **Seed data is not a translation.** The vendor shipped the expense categories, income sources, payment methods, brands, units, boxes, tax rates and currency names in English. Those are *rows in the database*, not keys in `language_translations` — which is why the Contabilidad dropdowns were in English even after the labels were translated. Fixed by `update/2026-10-29-espanol-datos.sql`.
+- Adding a new `trans()` key also means adding a row for `lang_id = 7` (es). `Language::get()` only inserts the key with a NULL value, which renders as the humanized key.
+- The Spanish translations that ship with the app are **UPPERCASE and mostly without accents** (only 15 of ~1500 use them). Match that style when adding new ones.
+- Migrations live in `update/` and are plain SQL, so they can be applied with phpMyAdmin as well as with `mysql`.
 
 ---
 

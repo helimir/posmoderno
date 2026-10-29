@@ -33,18 +33,23 @@ class Document
 	{
 		switch ($lang) {
 			case 'arabic':
+			case 'ar':
 				$tag = 'ar';
 				break;
 			case 'english':
+			case 'en':
 				$tag = 'en-US';
 				break;
 			case 'germany':
+			case 'de':
 				$tag = 'de';
 				break;
 			case 'spanish':
+			case 'es':
 				$tag = 'es';
 				break;
 			case 'french':
+			case 'fr':
 				$tag = 'fr';
 				break;
 			default:

@@ -24,12 +24,15 @@ class Language
 		$this->lang_code = $lang_code;
 		$statement = db()->prepare("SELECT `id` FROM `languages` WHERE `code` = ?");
       	$statement->execute(array($this->lang_code));
-      	$lang = $statement->fetch(PDO::FETCH_ASSOC);
-      	if (!$lang) {
-      		$statement = db()->prepare("SELECT `id` FROM `languages` WHERE `code` = ?");
-	      	$statement->execute(array('en'));
-	      	$lang = $statement->fetch(PDO::FETCH_ASSOC);
-      	} 
+        	$lang = $statement->fetch(PDO::FETCH_ASSOC);
+        	if (!$lang) {
+        		// El codigo pedido no existe: se usa el idioma por defecto de la
+        		// aplicacion (APP_DEFAULT_LANGUAGE en el .env).
+        		$default_code = (string) env_get('APP_DEFAULT_LANGUAGE', 'en');
+        		$statement = db()->prepare("SELECT `id` FROM `languages` WHERE `code` = ?");
+  	      	$statement->execute(array($default_code));
+  	      	$lang = $statement->fetch(PDO::FETCH_ASSOC);
+        	}
       	$this->lang_id = $lang['id'];
 	}
 
