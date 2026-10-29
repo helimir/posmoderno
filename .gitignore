@@ -3,7 +3,7 @@ storage/logs/v.txt
 old/
 storage/
 storage/qrcode.png
-/config.php
+# config.php SE versiona: no contiene secretos (la clave vive en .env).
 .env
 .env.local
 .env.*.local
