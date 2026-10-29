@@ -712,9 +712,14 @@ function pdo_start()
 	try {
 		$db = new PDO("mysql:host={$host};port={$port};dbname={$db};charset=utf8",$user,$pass);
 		$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+		// Prepara reales, igual que la clase Database: el servidor MySQL
+		// rechaza por si solo las sentencias apiladas ("...; DROP TABLE ...").
+		$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 	}
 	catch(PDOException $e) {
-		die('Database Connection Error: '.$e->getMessage());
+		// Se relanza en vez de die(): el mensaje de error de MySQL no debe
+		// llegar al cliente. El llamador decide que responder.
+		throw $e;
 	}
 	return $db;
 }

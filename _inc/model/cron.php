@@ -235,26 +235,52 @@ class ModelCron extends Model
 
   public function PushSqlToRemoteServer($action)
   {
+    require_once DIR_HELPER . 'sync.php';
+
     if (!checkInternetConnection()) 
     {
       $this->err[] = $action . ': Internet connection problem';
       return false;
     }
-
+  
     if (!SYNCSERVERURL || !SYNCHRONIZATION) 
     {
       $this->err[] = $action . ': Synchronization was disabled from config.php file';
       return false;
     }
-
+  
     $filePath = DIR_LOG.'sql.txt';
-    $info = array(
-      'username' => 'itsolution24',
-      'password' => '1993',
-      'action' => 'sync',
-      'data' =>  json_encode($this->ReadSyncData($filePath)),
+    $payload = array(
+        'action' => 'sync',
+        'data' =>  json_encode($this->ReadSyncData($filePath)),
     );
-    $apiCall = apiCall($info,SYNCSERVERURL);
+
+    $client_id = (string) env_get('SYNC_CLIENT_ID', '');
+    $client_secret = (string) env_get('SYNC_CLIENT_SECRET', '');
+
+    if ($client_id !== '' && $client_secret !== '') {
+      // Ruta firmada (v2): el servidor maestro valida la firma HMAC.
+      $payload['username'] = $client_id;
+      $apiCall = sync_post(SYNCSERVERURL, $payload, $client_id, $client_secret);
+    } else {
+      // Ruta heredada (v1): credenciales planas. Solo durante la transicion.
+      // NO hay valores por defecto: la credencial original del proveedor es
+      // publica (via en el codigo que distribute a todos sus clientes), asi
+      // que debe configurarse explicitamente en el .env de cada terminal.
+      $legacy_username = (string) env_get('SYNC_LEGACY_USERNAME', '');
+      $legacy_password = (string) env_get('SYNC_LEGACY_PASSWORD', '');
+
+      if ($legacy_username === '' || $legacy_password === '') {
+        $this->err[] = $action . ': legacy synchronization is not configured. Set SYNC_LEGACY_USERNAME and SYNC_LEGACY_PASSWORD, or better, SYNC_CLIENT_ID and SYNC_CLIENT_SECRET.';
+        return false;
+      }
+
+      $payload['username'] = $legacy_username;
+      $payload['password'] = $legacy_password;
+      $apiCall = apiCall($payload, SYNCSERVERURL);
+      $this->msg[] = $action . ': WARNING: using legacy (unsigned) synchronization. Set SYNC_CLIENT_ID and SYNC_CLIENT_SECRET to migrate.';
+    }
+
     if(!$apiCall || (property_exists($apiCall, 'status') && $apiCall->status == 'error')) 
     {
       $this->err[] = $action . ': Remote server problem';

@@ -163,13 +163,46 @@ The app runs on **PHP 8.2** (dev). It was migrated from 5.6 with `error_reportin
 5. **`language/` and `DIR_LANGUAGE` are dead.** Translations live in the `languages` / `language_translations` tables only.
 6. **`INSTALLED` in `config.php` is never read** by any code. It is not an install guard.
 7. **`update.php`, `refresh.php` and `revalidate.php` were removed** — all three `include "install/_init.php"`, and `install/` does not exist (fatal on load). `refresh.php` also overwrote `_init.php`, `network.php`, `ecnesil.php` with content downloaded from the vendor server (supply-chain backdoor). `update/*.sql` (the v2→v3 migration) is kept as inert history. The license itself lives in `_inc/config/purchase.php`; the "Invalid Purchase Code" page now points there.
-8. **`sync.php` bypasses the whole bootstrap** (no `_init.php`, no session, no auth) and accepts a hardcoded credential pair to execute arbitrary SQL from a JSON body. It is **kept on purpose** — it is the server side of the offline→online sync used in Venezuela. Treat it as hostile if you ever expose it publicly; it needs an auth redesign (rotate the credentials, move them to `.env`, add request signing), not a PHP version bump.
+8. **`sync.php` is the offline→online sync server** — it bypasses the app bootstrap (no `_init.php`, no session, no auth) and executes SQL sent by remote POS. It is **kept on purpose** for the Venezuela deployment. It now has a real auth redesign (see "Synchronization" below), but it remains the most dangerous endpoint in the repo: it executes SQL. Never expose it publicly without the client allowlist.
 8. **`Request` HTML-escapes every input** (`htmlspecialchars(..., ENT_COMPAT, 'UTF-8')`) on both keys and values. Re-escaping double-escapes. Store `&amp;` in the DB, not `&`.
 9. **SQL injection is pre-existing in list filters** — `filter_search_key`, `filter_name`, `filter_category_id`, etc. are concatenated straight into SQL (`_inc/model/product.php`, `customer.php`, `_inc/ajax.php`). Don't copy this pattern into new code, and don't "fix" it incidentally in an unrelated change.
 10. **`Loader::library()` contains `print_r($file);die;`** — never call it. Use `registry()->get('loader')->model(...)` / `->helper(...)`.
 11. **POS checkout is not transactional.** `_inc/place_order.php` → `ModelInvoice::createInvoice()` (`_inc/model/invoice.php`) writes `purchase_item` (FIFO stock decrement), `selling_item`, `product_to_store`, `selling_info`, `selling_price`, `payments`, `sell_logs`, and optional `customer_transactions` / `installment_*` — with **no `BEGIN`/`COMMIT`/rollback**. A mid-way failure leaves partial writes.
 12. **`storage/qrcode.png` is a single shared file** overwritten on every render — concurrent receipt/quotation rendering races.
 13. `admin/error_log`, `storage/logs/*.txt` — runtime log files, not source.
+
+---
+
+## Synchronization (offline → online)
+
+`sync.php` (server) + `ModelCron::PushSqlToRemoteServer()` (client) + `_inc/helper/sync.php` (shared signing code).
+
+**Protocol v2 (signed)** — `POST sync.php` with `username`, `action`, `data`, `timestamp`, `nonce`, `signature`:
+
+```
+canonical = username \n action \n timestamp \n nonce \n sha256(data)
+signature = hash_hmac('sha256', canonical, client_secret)
+```
+
+The server verifies in this order: known client → timestamp within `SYNC_MAX_AGE` → `hash_equals` signature → nonce not yet used. The nonce is consumed **after** the signature check, so an unauthenticated request cannot burn another client's nonces. Nonces live in `storage/sync-nonces/` (one file each, pruned by age); `fopen(..., 'x')` makes the create atomic.
+
+**Protocol v1 (legacy)** — plain `username`/`password`, accepted **only** while `SYNC_LEGACY_AUTH=true`. This exists so POS terminals that have not been updated yet keep syncing.
+
+**Operational requirements most people miss:**
+
+- **`LOG=true` is required for sync to work at all.** `Log::__construct` only opens its handle when `LOG` is on, so `storage/logs/sql.txt` is never written otherwise — and there is nothing to push. `SYNCHRONIZATION=true` alone is not enough.
+- The client only ever produces **INSERT / UPDATE / DELETE** (that is all `Database::execute()` logs). The server therefore rejects anything else, and rejects stacked statements (`...; DROP TABLE ...`). `pdo_start()` sets `ATTR_EMULATE_PREPARES => false` to match the main `Database` class, so MySQL itself refuses multi-statement queries.
+- The whole batch runs in **one transaction**: a failure mid-batch rolls back instead of leaving partial writes.
+- Auth failures and SQL errors are logged to `storage/logs/sync.log`; the HTTP response never leaks DB details.
+
+**Rollout (do it in this order):**
+
+1. Master: set `SYNC_CLIENTS="pos-01:<secret>,pos-02:<secret>"` — one secret per terminal, so one compromised store cannot impersonate the others.
+2. Each terminal: set `SYNC_CLIENT_ID` and `SYNC_CLIENT_SECRET` to match its entry. From that moment it uses the signed path automatically.
+3. Master: set `SYNC_LEGACY_AUTH=false` once **every** terminal is updated. Before that, leave it `true`.
+4. Master: set `SYNC_REQUIRE_HTTPS=true` (the default) and `SYNC_ALLOWED_IPS` if the terminals have static IPs.
+
+**Never change the v2 payload shape without updating both sides** — `_inc/helper/sync.php` is shared, so the signature is computed and verified by the same code.
 
 ---
 
