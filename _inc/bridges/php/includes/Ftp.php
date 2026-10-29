@@ -670,7 +670,7 @@ class Ftp
                 $item['rights'], $item['number'], $item['user'], $item['group'],
                 $item['size'], $item['month'], $item['day'], $item['time']
             ) = $chunks;
-            $item['type'] = $chunks[0]{0} === 'd' ? 'dir' : 'file';
+            $item['type'] = $chunks[0][0] === 'd' ? 'dir' : 'file';
             array_splice($chunks, 0, 8);
             $item['name'] = $itemName = implode(" ", $chunks);
         return $item;

@@ -9,6 +9,7 @@
 
 namespace Lex;
 
+#[\AllowDynamicProperties]
 class Parser
 {
     protected $allowPhp = false;
@@ -23,14 +24,19 @@ class Parser
     protected $variableLoopRegex = '';
     protected $variableTagRegex = '';
 
+    protected $callbackNameRegex = '';
     protected $callbackTagRegex = '';
     protected $callbackLoopTagRegex = '';
+    protected $callbackBlockRegex = '';
 
+    protected $recursiveRegex = '';
     protected $noparseRegex = '';
 
     protected $conditionalRegex = '';
     protected $conditionalElseRegex = '';
     protected $conditionalEndRegex = '';
+    protected $conditionalExistsRegex = '';
+    protected $conditionalNotRegex = '';
     protected $conditionalData = array();
 
     protected static $extractions = array(
@@ -171,7 +177,7 @@ class Parser
         if (preg_match_all($this->variableTagRegex, $text, $data_matches)) {
             foreach ($data_matches[1] as $index => $var) {
                 if (($val = $this->getVariable($var, $data, '__lex_no_value__')) !== '__lex_no_value__') {
-                    $text = str_replace($data_matches[0][$index], $val, $text);
+                    $text = str_replace($data_matches[0][$index], $val ?? '', $text);
                 }
             }
         }
@@ -248,7 +254,7 @@ class Parser
             if ($inCondition) {
                 $replacement = $this->valueToLiteral($replacement);
             }
-            $text = preg_replace('/'.preg_quote($tag, '/').'/m', addcslashes($replacement, '\\$'), $text, 1);
+            $text = preg_replace('/'.preg_quote($tag, '/').'/m', addcslashes($replacement ?? '', '\\$'), $text, 1);
             $text = $this->injectExtractions($text, 'nested_looped_tags');
         }
 
@@ -448,7 +454,7 @@ class Parser
         if (isset(self::$extractions['noparse'])) {
             foreach (self::$extractions['noparse'] AS $hash => $replacement) {
                 if (strpos($text, "noparse_{$hash}") !== FALSE) {
-                    $text = str_replace("noparse_{$hash}", $replacement, $text);
+                    $text = str_replace("noparse_{$hash}", $replacement ?? '', $text);
                 }
             }
         }
@@ -626,7 +632,7 @@ class Parser
             foreach (self::$extractions as $type => $extractions) {
                 foreach ($extractions as $hash => $replacement) {
                     if (strpos($text, "{$type}_{$hash}") !== false) {
-                        $text = str_replace("{$type}_{$hash}", $replacement, $text);
+                        $text = str_replace("{$type}_{$hash}", $replacement ?? '', $text);
                         unset(self::$extractions[$type][$hash]);
                     }
                 }
@@ -638,7 +644,7 @@ class Parser
 
             foreach (self::$extractions[$type] as $hash => $replacement) {
                 if (strpos($text, "{$type}_{$hash}") !== false) {
-                    $text = str_replace("{$type}_{$hash}", $replacement, $text);
+                    $text = str_replace("{$type}_{$hash}", $replacement ?? '', $text);
                     unset(self::$extractions[$type][$hash]);
                 }
             }
