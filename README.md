@@ -1,9 +1,6 @@
-# Modern POS - Point of Sale with Stock Management System
+# Sistema POS (punto de venta) moderno con gestión de inventario
 
-## Designed and Developed by ITSolution24.com
+## Diseñado por Helimir E. López
 
-## itsolution24bd@gmail.com
-## Contact +8801737346122
-
-
-## Exclusively on Evanto Codecanyon
+## contacto@helimirlopez.com
+## Contact +56958288844
