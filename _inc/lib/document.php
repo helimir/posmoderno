@@ -119,7 +119,7 @@ class Document
 				<section id=\"wrapper\">
 					<h1 style=\"color:red\">Invalid Purchase Code!</h1>
 					<div id=\"content\">
-						<p>Your purchase code is not valid. If you have a valid purchase code then <a style=\"color:blue\" href=\"".root_url()."/revalidate.php\">Click here</a> to revalide that or Claim a valid purchage code here: <a href=\"mailto:itsolution24bd@gmail.com\">itsolution24bd@gmail.com</a> | +8801737346122</p>
+						<p>Your purchase code is not valid. If you have a valid purchase code then edit the license file <code>_inc/config/purchase.php</code> with it, or Claim a valid purchage code here: <a href=\"mailto:itsolution24bd@gmail.com\">itsolution24bd@gmail.com</a> | +8801737346122</p>
 						<p style=\"color:blue;\">&mdash; <a style=\"color:green;\" target=\"_blink\" href=\"http://itsolution24.com\" title=\"ITsolution24.com\">ITsolution24.com</a></p>
 					</div>
 				</section>

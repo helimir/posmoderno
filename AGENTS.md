@@ -1,26 +1,31 @@
 # AGENTS.md — POS Moderno
 
-Legacy **PHP 5.6+ (procedural) + AngularJS 1.6 + MySQL/MariaDB** point-of-sale app.
+Legacy **PHP 8.2 (procedural) + AngularJS 1.6 + MySQL/MariaDB** point-of-sale app.
 Vendor: ITSolution24 (Codecanyon). Source is obfuscated in places and shipped pre-built.
 
-No git repo, no CI, no test suite, no composer.json, no lint config. Vendored PHP libs live in `_inc/vendor/`.
+Git repo (branch `main`), no CI, no test suite, no composer.json, no lint config.
+Vendored PHP libs live in `_inc/vendor/`.
 
 ---
 
 ## Setup
 
 1. Import `BASE DE DATOS/pos_moderno.sql` into a MySQL/MariaDB DB (phpMyAdmin). **There is no installer** — `install/` does not exist.
-2. Copy `config.php` (it is `.gitignore`d but **required**) and set:
-   - `$sql_details` → host/db/user/pass/port
-   - `SUBDIRECTORY` → the URL subfolder the app is served from (default `pos_moderno`)
-   - `FILEMANAGERURL` → public URL of `storage/products/` (product images break otherwise)
-3. Serve over Apache/PHP (`.htaccess` sets `max_execution_time 600`; needs `AllowOverride`).
-4. `storage/` must be **writable by the web server** (uploads, logs, backups, activity logs).
+2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.
+3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
+   - `SUBDIRECTORY` is derived from the path of `APP_URL` unless `APP_SUBDIRECTORY` is set explicitly.
+   - `FILEMANAGERURL` defaults to `APP_URL . '/storage/products'`.
+4. Serve over Apache/PHP (`.htaccess` sets `max_execution_time 600`; needs `AllowOverride`).
+5. `storage/` must be **writable by the web server** (uploads, logs, backups, activity logs).
 
-Demo seed login from the SQL dump: `mitienda@gmail.com` / `tusolutionweb`.
+**Timezone:** the effective timezone is the **store preference** (`stores.preference['timezone']`), not the app-level one — `_init.php` prefers the store value over its own default. Set it per store (Store → Edit) or directly in the `stores` table. The SQL dump ships `America/Lima`; for a Venezuela deployment this must be `America/Caracas`.
+
+Seed accounts from the SQL dump: `cashier@gmail.com` / `tusolutionweb` and `salesman@gmail.com` / `tusolutionweb` (passwords are stored as md5 in `users.password`).
 (`USUARIOS/USUARIOS.txt` lists `tusolutionweb@gmail.com` — that account does **not** exist in the dump.)
 
 `Documentacion/index.html` is the full Spanish manual, including install steps. `README.md` is a 9-line vendor stub.
+
+**The app only boots under a web SAPI.** In CLI, `_init.php` skips creating the `Session`, and `Store::__construct` then dereferences a null session → fatal. That also means `php cron.php <ACTION>` does **not** work; use the HTTP form (`wget http://host/pos_moderno/cron.php?action=DBBACKUP`).
 
 ---
 
@@ -129,39 +134,54 @@ Generated output, all checked in:
 
 ---
 
+## PHP 8.2 runtime
+
+The app runs on **PHP 8.2** (dev). It was migrated from 5.6 with `error_reporting(-1)` in `_init.php`, so **every** deprecation surfaces on screen. Rules that keep it clean:
+
+- **Declare every property on the class.** PHP 8.2 deprecates dynamic property creation (`$this->foo = …` where `foo` is not declared). Model subclasses are exempt: the base `Model` defines `__get`/`__set` that proxy to the registry, so `$this->db` in a model is a registry lookup, not a property.
+- **Only `Database::prepare()` needs `#[\ReturnTypeWillChange]`.** Its signature is intentionally incompatible with `PDO::prepare()` (it returns the wrapper — see Landmines #2). `Database::lastInsertId()` is properly typed as `lastInsertId(?string $seqname = null): string|false`. `execute()`, `fetch()`, `fetchAll()` and `rowCount()` do **not** warn — don't add attributes to them. The vendored `SpreadsheetReader` needs the same attribute on its `Iterator`/`Countable`/`SeekableIterator` methods.
+- `#[\ReturnTypeWillChange]` suppresses a deprecation; it is **not** a licence to change behaviour. For a class with genuinely dynamic properties, `#[\AllowDynamicProperties]` is the correct escape hatch (used only in vendored code).
+- **DB columns are nullable.** `trim($row['col'])`, `strlen($row['col'])`, `strtoupper($col)`, `mb_strlen($col)` on a nullable column raise "Passing null to parameter". Use `$row['col'] ?? ''` or cast to `(string)`. `language_translations.lang_value` is NULL for every untranslated key, and `customers.customer_country` / `customer_state` are nullable — these are the most common sources.
+- **`fetch()` returns `false` when there is no row.** Writing `$row['x'] = …` on it raises "Automatic conversion of false to array". Initialise to `array()` first, preserving the original result shape.
+- **`FILTER_SANITIZE_STRIPPED` is deprecated** (PHP 8.1). `validateString()` re-implements it as `strip_tags` + quote escaping, which avoids double-encoding entities that `Request` already escaped. Do not "simplify" it to `htmlspecialchars()` — that double-escapes `&amp;`.
+- Dead files still carry dynamic properties but are **never loaded** by the app: `_inc/lib/xuser.php` (a duplicate `User` class — would fatal on redeclare), `_inc/lib/xparser.php`, `assets/edit-area/edit_area_compressor.php` (orphaned; the app uses TinyMCE). Leave them alone unless you are deliberately reviving them.
+
+---
+
 ## Landmines
 
-1. **`_init.php` is obfuscated** — line 7 is a ~60 KB single statement of hex/octal escapes and `goto` labels. Do not try to read or rewrite it. Extend via `_inc/helper/*` or `_inc/lib/*`.
+1. **`_init.php` is obfuscated** — line 7 is a ~26 KB single statement of hex/octal escapes and `goto` labels. Do not try to read or rewrite it. Extend via `_inc/helper/*` or `_inc/lib/*`. It defines `ROOT`, `DIR_*`, `ROOT_URL`, `PROTOCOL`, `ENVIRONMENT`, `APPNAME`, `APPID`, and the `db()` / `registry()` accessors, then builds the registry. Its built-in default timezone is `America/New_York` and is overridden by the store preference.
 2. **`Database::prepare()` returns the `Database` object, not a `PDOStatement`** (`_inc/lib/database.php`). Only **one statement can be live at a time** — a second `prepare()` before `execute()`/`fetch()` clobbers the first. `execute()` returns **null**, not a row count. Canonical form:
    ```php
    $statement = db()->prepare("SELECT … WHERE id = ?");
    $statement->execute(array($id));
    $row = $statement->fetch(PDO::FETCH_ASSOC);
    ```
+   The statement is **not** executed until you call `execute()`. `db()->prepare($sql)->fetchAll(...)` returns an empty set.
 3. **`trans('missing_key')` writes to the database.** `Language::get()` INSERTs the key into `language_translations` with a NULL value, then returns a title-cased version of the key. Missing keys render as text, never as empty — check the `language_translations` table, not the code.
 4. **`set_preference()` does not exist.** Use `ModelStore::editPreference($store_id, $preference)` (serialized array).
 5. **`language/` and `DIR_LANGUAGE` are dead.** Translations live in the `languages` / `language_translations` tables only.
 6. **`INSTALLED` in `config.php` is never read** by any code. It is not an install guard.
-7. **`update.php`, `refresh.php`, `revalidate.php` are dead** — all `include "install/_init.php"`, and `install/` does not exist (fatal on load). `refresh.php` also overwrites `_init.php`, `network.php`, `ecnesil.php` with content downloaded from the vendor server — do not run it.
+7. **`update.php`, `refresh.php` and `revalidate.php` were removed** — all three `include "install/_init.php"`, and `install/` does not exist (fatal on load). `refresh.php` also overwrote `_init.php`, `network.php`, `ecnesil.php` with content downloaded from the vendor server (supply-chain backdoor). `update/*.sql` (the v2→v3 migration) is kept as inert history. The license itself lives in `_inc/config/purchase.php`; the "Invalid Purchase Code" page now points there.
+8. **`sync.php` bypasses the whole bootstrap** (no `_init.php`, no session, no auth) and accepts a hardcoded credential pair to execute arbitrary SQL from a JSON body. It is **kept on purpose** — it is the server side of the offline→online sync used in Venezuela. Treat it as hostile if you ever expose it publicly; it needs an auth redesign (rotate the credentials, move them to `.env`, add request signing), not a PHP version bump.
 8. **`Request` HTML-escapes every input** (`htmlspecialchars(..., ENT_COMPAT, 'UTF-8')`) on both keys and values. Re-escaping double-escapes. Store `&amp;` in the DB, not `&`.
 9. **SQL injection is pre-existing in list filters** — `filter_search_key`, `filter_name`, `filter_category_id`, etc. are concatenated straight into SQL (`_inc/model/product.php`, `customer.php`, `_inc/ajax.php`). Don't copy this pattern into new code, and don't "fix" it incidentally in an unrelated change.
 10. **`Loader::library()` contains `print_r($file);die;`** — never call it. Use `registry()->get('loader')->model(...)` / `->helper(...)`.
 11. **POS checkout is not transactional.** `_inc/place_order.php` → `ModelInvoice::createInvoice()` (`_inc/model/invoice.php`) writes `purchase_item` (FIFO stock decrement), `selling_item`, `product_to_store`, `selling_info`, `selling_price`, `payments`, `sell_logs`, and optional `customer_transactions` / `installment_*` — with **no `BEGIN`/`COMMIT`/rollback**. A mid-way failure leaves partial writes.
 12. **`storage/qrcode.png` is a single shared file** overwritten on every render — concurrent receipt/quotation rendering races.
-13. **`sync.php` bypasses the whole bootstrap** (no `_init.php`, no session, no auth) and accepts a hardcoded credential pair to execute arbitrary SQL from a JSON body. Treat as hostile if you ever expose it.
-14. `admin/error_log`, `storage/logs/*.txt` — runtime log files, not source.
+13. `admin/error_log`, `storage/logs/*.txt` — runtime log files, not source.
 
 ---
 
 ## Operations
 
-- **Cron** — `cron.php?action=<ACTION>` or CLI `php cron.php <ACTION>`.
+- **Cron** — `cron.php?action=<ACTION>` (HTTP only; CLI fatals, see Setup).
   Actions: `CHECKFORUPDATE`, `DBBACKUP`, `SENDCUSTOMERBIRTHDAYSMS`, `PUSHSQLTOREMOTESERVER`, `RUNALLJOBS`.
   Suggested schedule (from `cron.php`): `0 1 * * * wget -qO- http://<host>/<subdir>/cron.php`
   No-op when `DEMO = true`.
 - **Backups** — `ModelCron::DBBackup()` writes `storage/backups/mpos-backup-on-YYYY-MM-DD.txt` (excludes `users`, `user_group`, `user_to_store`), auto-prunes >30 days. `ModelCron::TableBackup()` writes per-table dumps. Restore via `admin/backup_restore.php` + `_inc/restore.php` (reads `storage/backups/bac*.*`).
 - **Maintenance mode** — create `<ROOT>/.maintenance` to trigger `maintenance.php`; delete it to resume.
-- **`config.php` flags** that change runtime behavior: `DEMO`, `USECOMPILEDASSET`, `RTL`, `INSTALLMENT`, `HOOK` (activity logging), `LOG`, `SYNCHRONIZATION` (SQL log + remote push).
+- **`.env` flags** that change runtime behavior: `DEMO`, `USECOMPILEDASSET`, `RTL`, `INSTALLMENT`, `HOOK` (activity logging), `LOG`, `SYNCHRONIZATION` (SQL log + remote push). They are read in `config.php` via `env_bool()`; the `.env` value wins over the literal fallback.
 - **Multi-store** — the active store comes from the session (`store_id`, defaults to 1); `store_select.php` switches it. Most models take `$store_id` and scope through the `*_to_store` joins — preserve that scoping when adding queries.
 
 ---
@@ -175,3 +195,4 @@ There is **no test suite**. Verify manually:
 3. For DB-affecting changes, confirm rows in the relevant `*_to_store` join table and that the serialized preference blob still round-trips through `unserialize()`.
 4. For POS/stock changes, verify the `purchase_item` FIFO decrement and that `product_to_store.quantity_in_stock` matches the sum of active lots — no transaction protects this.
 5. Rebuild assets (`npm run dev`) if you touched anything under `assets/itsolution24/angular/` or `assets/itsolution24/js/`, and remember the CSS exception above.
+6. **Watch the deprecation output.** `_init.php` sets `error_reporting(-1)` in development, so PHP 8.2 notices appear inline. A clean dashboard is not proof the rest of the app is clean — each page exercises different classes. To audit statically, load the class files and watch for `E_DEPRECATED`. The fastest full sweep is to log in and hit every `admin/*.php` page while reading the PHP server's stderr.
