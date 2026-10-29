@@ -1250,7 +1250,12 @@ class Mobiledetect
      */
     public function match($regex, $userAgent = null)
     {
-        $match = (bool) preg_match(sprintf('#%s#is', $regex), (false === empty($userAgent) ? $userAgent : $this->userAgent), $matches);
+        // El User-Agent puede venir null (peticiones sin esa cabecera, por
+        // ejemplo desde curl o una app movil). Sin el cast, preg_match()
+        // recibe null y PHP 8.1+ emite una deprecacion que contamina la
+        // respuesta JSON de los endpoints de API.
+        $subject = (false === empty($userAgent)) ? $userAgent : (string) $this->userAgent;
+        $match = (bool) preg_match(sprintf('#%s#is', $regex), $subject, $matches);
         // If positive match is found, store the results for debug.
         if ($match) {
             $this->matchingRegex = $regex;

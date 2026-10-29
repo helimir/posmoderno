@@ -165,11 +165,15 @@ The app runs on **PHP 8.2** (dev). It was migrated from 5.6 with `error_reportin
 7. **`update.php`, `refresh.php` and `revalidate.php` were removed** — all three `include "install/_init.php"`, and `install/` does not exist (fatal on load). `refresh.php` also overwrote `_init.php`, `network.php`, `ecnesil.php` with content downloaded from the vendor server (supply-chain backdoor). `update/*.sql` (the v2→v3 migration) is kept as inert history. The license itself lives in `_inc/config/purchase.php`; the "Invalid Purchase Code" page now points there.
 8. **`sync.php` is the offline→online sync server** — it bypasses the app bootstrap (no `_init.php`, no session, no auth) and executes SQL sent by remote POS. It is **kept on purpose** for the Venezuela deployment. It now has a real auth redesign (see "Synchronization" below), but it remains the most dangerous endpoint in the repo: it executes SQL. Never expose it publicly without the client allowlist.
 8. **`Request` HTML-escapes every input** (`htmlspecialchars(..., ENT_COMPAT, 'UTF-8')`) on both keys and values. Re-escaping double-escapes. Store `&amp;` in the DB, not `&`.
-9. **SQL injection is pre-existing in list filters** — `filter_search_key`, `filter_name`, `filter_category_id`, etc. are concatenated straight into SQL (`_inc/model/product.php`, `customer.php`, `_inc/ajax.php`). Don't copy this pattern into new code, and don't "fix" it incidentally in an unrelated change.
+9. **Never concatenate a request-derived value into SQL.** The listing filters (`filter_name`, `filter_search_key`, `exclude`, `only`, …) across `_inc/model/*.php` and the POS autocomplete in `_inc/ajax.php` were a real SQL injection — a payload returned every row instead of the filtered ones. They now use `?` placeholders with an `$args` array. Two rules for anything new:
+   - **Values** → `?` placeholder, pushed onto `$args` in the same order the placeholder appears in the SQL. `LIKE 'x%'` becomes `LIKE ?` with `$args[] = $data['k'] . '%'`.
+   - **Identifiers** (column names) → an explicit allowlist. `_inc/ajax.php` accepts only `p_id`, `p_name`, `p_code`; `ORDER BY` uses `in_array($data['sort'], $sort_data)`.
+   The `filter_*` keys are only ever filled with literal values by the templates today, so the injection was latent in the models — but `_inc/ajax.php` was **live** (any cashier could hit it from the POS search).
 10. **`Loader::library()` contains `print_r($file);die;`** — never call it. Use `registry()->get('loader')->model(...)` / `->helper(...)`.
 11. **POS checkout is not transactional.** `_inc/place_order.php` → `ModelInvoice::createInvoice()` (`_inc/model/invoice.php`) writes `purchase_item` (FIFO stock decrement), `selling_item`, `product_to_store`, `selling_info`, `selling_price`, `payments`, `sell_logs`, and optional `customer_transactions` / `installment_*` — with **no `BEGIN`/`COMMIT`/rollback**. A mid-way failure leaves partial writes.
 12. **`storage/qrcode.png` is a single shared file** overwritten on every render — concurrent receipt/quotation rendering races.
 13. `admin/error_log`, `storage/logs/*.txt` — runtime log files, not source.
+14. **Every handler in `_inc/` must start with an `is_loggedin()` guard** returning `422 {"errorMsg": trans('error_login')}`. `_inc/ajax.php` was the only one missing it and it leaked the whole product catalogue with costs and margins.
 
 ---
 
@@ -203,6 +207,22 @@ The server verifies in this order: known client → timestamp within `SYNC_MAX_A
 4. Master: set `SYNC_REQUIRE_HTTPS=true` (the default) and `SYNC_ALLOWED_IPS` if the terminals have static IPs.
 
 **Never change the v2 payload shape without updating both sides** — `_inc/helper/sync.php` is shared, so the signature is computed and verified by the same code.
+
+---
+
+## Known broken listing filters (pre-existing, unrelated to security)
+
+These filters were already broken before the SQL-injection fix and still are. They are dead code today — no caller passes the filter that triggers them — so nothing in the UI depends on them:
+
+| Filter | Problem |
+|---|---|
+| `getBanners()` | queries table `banners`; the table is `banner` |
+| `getLoans()` | filters on column `loan_name`, which does not exist |
+| `getProducts()` | filters on `p.purchase_price` / `p.sell_price` / `p.quantity_in_stock`; those columns live in `product_to_store` (`p2s`), not `products` |
+| `getBoxes()` | `exclude` uses `box_id`, ambiguous between `boxes` and `box_to_store` |
+| `getProducts()` | `filter_purchase_price` only applies when `filter_sell_price` is also set (copy/paste bug), so it never filters on its own |
+
+They were parameterised like the rest, so fixing them is now a one-line change per filter — but do not "fix" them incidentally in an unrelated change.
 
 ---
 
