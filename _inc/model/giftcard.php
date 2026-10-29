@@ -225,13 +225,16 @@ class ModelGiftcard extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `gift_cards` WHERE `expiry` > NOW()";
+		$args = array();
 
 		if (isset($data['filter_card_no'])) {
-			$sql .= " AND `card_no` = " . $data['filter_card_no'];
+			$sql .= " AND `card_no` = ?";
+			$args[] = $data['filter_card_no'];
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `id` != " . $data['exclude'];
+			$sql .= " AND `id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `gift_cards`.`id`";
@@ -266,7 +269,7 @@ class ModelGiftcard extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array(1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

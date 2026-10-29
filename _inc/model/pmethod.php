@@ -110,21 +110,30 @@ class ModelPmethod extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `pmethods` LEFT JOIN `pmethod_to_store` pay2s ON (`pmethods`.`pmethod_id` = `pay2s`.`ppmethod_id`) WHERE `pay2s`.`store_id` = ? AND `pay2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['filter_code_name'])) {
-			$sql .= " AND `code_name` LIKE '" . $data['filter_code_name'] . "%'";
+			$sql .= " AND `code_name` LIKE ?";
+			$args[] = $data['filter_code_name'] . '%';
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `pmethods`.`code_name` IN ('" . implode("','", $data['only']) . "'')";
+			$sql .= " AND `pmethods`.`code_name` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			foreach ($data['only'] as $only_id) {
+				$args[] = $only_id;
+			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `pmethods`.`code_name` NOT IN ('".implode("','", $data['exclude'])."')";
+			$sql .= " AND `pmethods`.`code_name` NOT IN (" . implode(", ", array_fill(0, count($data['exclude']), "?")) . ")";
+			foreach ($data['exclude'] as $exclude_code) {
+				$args[] = $exclude_code;
+			}
 		}
 
 		$sql .= " GROUP BY `pmethods`.`pmethod_id`";
@@ -159,7 +168,7 @@ class ModelPmethod extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

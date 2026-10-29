@@ -159,13 +159,16 @@ class ModelBox extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `boxes` LEFT JOIN `box_to_store` b2s ON (`boxes`.`box_id` = `b2s`.`box_id`) WHERE `b2s`.`store_id` = ? AND `b2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `box_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `box_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `box_id` != " . $data['exclude'];
+			$sql .= " AND `box_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `boxes`.`box_id`";
@@ -199,7 +202,7 @@ class ModelBox extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

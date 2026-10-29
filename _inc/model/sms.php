@@ -77,51 +77,62 @@ class ModelSms extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `sms_schedule` WHERE `store_id` = ?";
+		$args = array($store_id);
 
 		if (isset($data['filter_people_type'])) {
-			$sql .= " AND `people_type` = '" . $data['filter_people_type'] . "'";
+			$sql .= " AND `people_type` = ?";
+			$args[] = $data['filter_people_type'];
 		}
 
 		if (isset($data['filter_mobile_number'])) {
-			$sql .= " AND `mobile_number` = '" . $data['filter_mobile_number'] . "'";
+			$sql .= " AND `mobile_number` = ?";
+			$args[] = $data['filter_mobile_number'];
 		}
 
 		if (isset($data['filter_people_name'])) {
-			$sql .= " AND `people_name` = '" . $data['filter_people_name'] . "'";
+			$sql .= " AND `people_name` = ?";
+			$args[] = $data['filter_people_name'];
 		}
 
 		if (isset($data['filter_sms_type'])) {
-			$sql .= " AND `sms_type` = '" . $data['filter_sms_type'] . "'";
+			$sql .= " AND `sms_type` = ?";
+			$args[] = $data['filter_sms_type'];
 		}
 
 		if (isset($data['filter_campaign_name'])) {
-			$sql .= " AND `campaign_name` = '" . $data['filter_campaign_name'] . "'";
+			$sql .= " AND `campaign_name` = ?";
+			$args[] = $data['filter_campaign_name'];
 		}
 
 		if (isset($data['filter_process_status'])) {
-			$sql .= " AND `process_status` = '" . $data['filter_process_status'] . "'";
+			$sql .= " AND `process_status` = ?";
+			$args[] = $data['filter_process_status'];
 		} else {
 			$sql .= " AND `process_status` = 0";
 		}
 
 		if (isset($data['filter_total_eqg_try'])) {
-			$sql .= " AND `total_try` >= '" . $data['filter_total_eqg_try'] . "'";
+			$sql .= " AND `total_try` >= ?";
+			$args[] = $data['filter_total_eqg_try'];
 		} else {
 			if (isset($data['filter_total_try'])) {
-				$sql .= " AND `total_try` = '" . $data['filter_total_try'] . "'";
+				$sql .= " AND `total_try` = ?";
+				$args[] = $data['filter_total_try'];
 			} else {
 				$sql .= " AND `total_try` = 0 || `response_text` LIKE '%error%' || `response_text` LIKE '%failure%' || `response_text` LIKE '%fail%' || `response_text` IS NULL";
 			}
 		}
 
 		if (isset($data['filter_delivery_status'])) {
-			$sql .= " AND `delivery_status` = '" . $data['filter_delivery_status'] . "'";
+			$sql .= " AND `delivery_status` = ?";
+			$args[] = $data['filter_delivery_status'];
 		} else {
 			$sql .= " AND `delivery_status` = 'pending'";
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `id` != " . $data['exclude'];
+			$sql .= " AND `id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `id`";
@@ -157,7 +168,7 @@ class ModelSms extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

@@ -168,9 +168,11 @@ class ModelSupplier extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `suppliers` LEFT JOIN `supplier_to_store` s2s ON (`suppliers`.`sup_id` = `s2s`.`sup_id`) WHERE `s2s`.`store_id` = ? AND `s2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `sup_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `sup_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		$sql .= " GROUP BY `suppliers`.`sup_id`";
@@ -204,7 +206,7 @@ class ModelSupplier extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

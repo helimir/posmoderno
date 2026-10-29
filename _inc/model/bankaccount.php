@@ -179,17 +179,22 @@ class ModelBankAccount extends Model
 	{
 		$store_id = $store_id ? $store_id : store_id();
 		$sql = "SELECT * FROM `bank_accounts` LEFT JOIN `bank_account_to_store` ba2s ON (`bank_accounts`.`id` = `ba2s`.`account_id`) WHERE `ba2s`.`store_id` = ? AND `ba2s`.`status` = ?";
+		// Los valores de filtro se enlazan con placeholders para evitar inyeccion SQL.
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `account_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `account_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['filter_no'])) {
-			$sql .= " AND `account_no` LIKE '" . $data['filter_no'] . "%'";
+			$sql .= " AND `account_no` LIKE ?";
+			$args[] = $data['filter_no'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `id` != " . $data['exclude'];
+			$sql .= " AND `id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `bank_accounts`.`id`";
@@ -223,7 +228,7 @@ class ModelBankAccount extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

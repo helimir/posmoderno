@@ -73,23 +73,30 @@ class ModelExpenseCategory extends Model
 	public function getExpenseCategorys($data = array()) 
 	{
 		$sql = "SELECT * FROM `expense_categorys` WHERE `status` = ?";
+		$args = array(1);
 
 		if (isset($data['filter_parent_id'])) {
-			$sql .= " AND `parent_id` = " . $data['filter_parent_id'];
+			$sql .= " AND `parent_id` = ?";
+			$args[] = $data['filter_parent_id'];
 		} elseif (!isset($data['filter_fetch_all'])) {
 			$sql .= " AND `parent_id` = 0";
 		}
 
 		if (isset($data['filter_category_name'])) {
-			$sql .= " AND `category_name` LIKE '" . $data['filter_category_name'] . "%'";
+			$sql .= " AND `category_name` LIKE ?";
+			$args[] = $data['filter_category_name'] . '%';
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `category_id` IN (" . implode("','", $data['only']) . ")";
+			$sql .= " AND `category_id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			foreach ($data['only'] as $only_id) {
+				$args[] = $only_id;
+			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `category_id` != " . $data['exclude'];
+			$sql .= " AND `category_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `expense_categorys`.`category_id`";
@@ -123,7 +130,7 @@ class ModelExpenseCategory extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array(1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

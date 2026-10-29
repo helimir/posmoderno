@@ -182,13 +182,16 @@ class ModelPrinter extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `printers` LEFT JOIN `printer_to_store` p2s ON (`printers`.`printer_id` = `p2s`.`pprinter_id`) WHERE `p2s`.`store_id` = ? AND `p2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_title'])) {
-			$sql .= " AND `title` LIKE '" . $data['filter_title'] . "%'";
+			$sql .= " AND `title` LIKE ?";
+			$args[] = $data['filter_title'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `printer_id` != " . $data['exclude'];
+			$sql .= " AND `printer_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `printers`.`printer_id`";
@@ -222,7 +225,7 @@ class ModelPrinter extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

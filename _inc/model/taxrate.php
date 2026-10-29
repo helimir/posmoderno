@@ -50,17 +50,21 @@ class ModelTaxrate extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `taxrates` WHERE `status` = ?";
+		$args = array(1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `taxrate_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `taxrate_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['filter_code'])) {
-			$sql .= " AND `code_name` LIKE '" . $data['filter_code'] . "%'";
+			$sql .= " AND `code_name` LIKE ?";
+			$args[] = $data['filter_code'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `taxrate_id` != " . $data['exclude'];
+			$sql .= " AND `taxrate_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `taxrates`.`taxrate_id`";
@@ -94,7 +98,7 @@ class ModelTaxrate extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array(1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

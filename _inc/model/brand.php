@@ -156,9 +156,11 @@ class ModelBrand extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `brands` LEFT JOIN `brand_to_store` b2s ON (`brands`.`brand_id` = `b2s`.`brand_id`) WHERE `b2s`.`store_id` = ? AND `b2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `brand_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `brand_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		$sql .= " GROUP BY `brands`.`brand_id`";
@@ -192,7 +194,7 @@ class ModelBrand extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

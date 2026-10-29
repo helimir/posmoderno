@@ -177,23 +177,30 @@ class ModelBanner extends Model
 
 		$store_id = $store_id ? $store_id : store_id();
 		$sql = "SELECT * FROM `banners` LEFT JOIN `banner_to_store` b2s ON (`banners`.`id` = `b2s`.`banner_id`) WHERE `b2s`.`store_id` = ? AND `b2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_parent_id'])) {
-			$sql .= " AND `parent_id` = " . $data['filter_parent_id'];
+			$sql .= " AND `parent_id` = ?";
+			$args[] = $data['filter_parent_id'];
 		} elseif (!isset($data['filter_fetch_all'])) {
 			$sql .= " AND `parent_id` = 0";
 		}
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `id` IN (" . implode("','", $data['only']) . ")";
+			$sql .= " AND `id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			foreach ($data['only'] as $only_id) {
+				$args[] = $only_id;
+			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `id` != " . $data['exclude'];
+			$sql .= " AND `id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `banners`.`id`";
@@ -227,7 +234,7 @@ class ModelBanner extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

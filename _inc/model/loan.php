@@ -179,13 +179,16 @@ class ModelLoan extends Model
 
 
 		$sql = "SELECT * FROM `loans`  WHERE `status` = ?";
+		$args = array(1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `loan_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `loan_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `loan_id` != " . $data['exclude'];
+			$sql .= " AND `loan_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `loans`.`loan_id`";
@@ -219,7 +222,7 @@ class ModelLoan extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array(1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

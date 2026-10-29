@@ -1,6 +1,15 @@
 <?php
 include ("../_init.php");
 
+// Este endpoint devuelve el catalogo con precios y costos: exige sesion,
+// como el resto de los handlers de _inc/.
+if (!is_loggedin()) {
+	header('HTTP/1.1 422 Unprocessable Entity');
+	header('Content-Type: application/json; charset=UTF-8');
+	echo json_encode(array('errorMsg' => trans('error_login')));
+	exit();
+}
+
 // Product Images
 if($request->server['REQUEST_METHOD'] == 'GET' AND $request->get['type'] == 'PRODUCTIMAGES') 
 {
@@ -173,8 +182,13 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'UP
 if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'PURCHASEITEM') 
 {
 	$sup_id = isset($request->post['sup_id']) ? $request->post['sup_id'] : null;
-	$type = $request->post['type'];
-	$name = $request->post['name_starts_with'];
+	// El cliente elige la columna de busqueda: solo se admiten columnas conocidas.
+	$type = isset($request->post['type']) ? $request->post['type'] : 'p_name';
+	if (!in_array($type, array('p_id', 'p_name', 'p_code'), true)) {
+		echo json_encode(array('status' => 'error', 'message' => 'Invalid Action', 'for' => 'invalid'));
+		exit();
+	}
+	$name = isset($request->post['name_starts_with']) ? $request->post['name_starts_with'] : '';
 	$query = "SELECT `p_id`, `p_name`, `p_code`, `category_id`, `unit_id`, `p2s`.`tax_method`, `p2s`.`purchase_price`, `p2s`.`sell_price`, `p2s`.`quantity_in_stock` 
 		FROM `products` 
 		LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`)
@@ -182,13 +196,15 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'PU
 	if ($sup_id) {
 		$query .= " AND `p2s`.`sup_id` = ?";
 	}
-	$query .= " AND (UPPER($type) LIKE '" . strtoupper($name) . "%' OR `p_code` = '{$name}') ORDER BY `p_id` DESC LIMIT 10";
-	$statement = db()->prepare($query);
+	$query .= " AND (UPPER(`" . $type . "`) LIKE ? OR `p_code` = ?) ORDER BY `p_id` DESC LIMIT 10";
+	$args = array(store_id(), 1);
 	if ($sup_id) {
-		$statement->execute(array(store_id(), 1, $sup_id));
-	} else {
-		$statement->execute(array(store_id(), 1));
+		$args[] = $sup_id;
 	}
+	$args[] = strtoupper($name) . '%';
+	$args[] = $name;
+	$statement = db()->prepare($query);
+	$statement->execute($args);
 	$products = $statement->fetchAll(PDO::FETCH_ASSOC);
 	$data = array();
     foreach ($products as $product) {
@@ -213,8 +229,13 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'PU
 if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'SELLINGITEM') 
 {
 	$sup_id = isset($request->post['sup_id']) ? $request->post['sup_id'] : null;
-	$type = $request->post['type'];
-	$name = $request->post['name_starts_with'];
+	// El cliente elige la columna de busqueda: solo se admiten columnas conocidas.
+	$type = isset($request->post['type']) ? $request->post['type'] : 'p_name';
+	if (!in_array($type, array('p_id', 'p_name', 'p_code'), true)) {
+		echo json_encode(array('status' => 'error', 'message' => 'Invalid Action', 'for' => 'invalid'));
+		exit();
+	}
+	$name = isset($request->post['name_starts_with']) ? $request->post['name_starts_with'] : '';
 	$query = "SELECT `p_id`, `p_name`, `p_code`, `category_id`, `p2s`.`tax_method`, `p2s`.`purchase_price`, `p2s`.`sell_price`, `p2s`.`quantity_in_stock` 
 		FROM `products` 
 		LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`)
@@ -222,14 +243,15 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'SE
 	if ($sup_id) {
 		$query .= " AND `p2s`.`sup_id` = ?";
 	}
-	// $query .= " AND UPPER($type) LIKE '" . strtoupper($name) . "%' ORDER BY `p_id` DESC LIMIT 10";
-	$query .= " AND (UPPER($type) LIKE '" . strtoupper($name) . "%' OR `p_code` = '{$name}') ORDER BY `p_id` DESC LIMIT 10";
-	$statement = db()->prepare($query);
+	$query .= " AND (UPPER(`" . $type . "`) LIKE ? OR `p_code` = ?) ORDER BY `p_id` DESC LIMIT 10";
+	$args = array(store_id(), 1);
 	if ($sup_id) {
-		$statement->execute(array(store_id(), 1, $sup_id));
-	} else {
-		$statement->execute(array(store_id(), 1));
+		$args[] = $sup_id;
 	}
+	$args[] = strtoupper($name) . '%';
+	$args[] = $name;
+	$statement = db()->prepare($query);
+	$statement->execute($args);
 	$products = $statement->fetchAll(PDO::FETCH_ASSOC);
 	$data = array();
     foreach ($products as $product) {

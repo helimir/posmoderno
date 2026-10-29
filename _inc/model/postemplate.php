@@ -155,13 +155,16 @@ class ModelPostemplate extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `pos_templates` LEFT JOIN `pos_template_to_store` pt2s ON (`pos_templates`.`template_id` = `pt2s`.`ttemplate_id`) WHERE `pt2s`.`store_id` = ? AND `pt2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `template_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `template_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `template_id` != " . $data['exclude'];
+			$sql .= " AND `template_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `pos_templates`.`template_id`";
@@ -196,7 +199,7 @@ class ModelPostemplate extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

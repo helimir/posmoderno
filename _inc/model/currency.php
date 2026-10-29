@@ -115,9 +115,11 @@ class ModelCurrency extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `currency` LEFT JOIN `currency_to_store` c2s ON (`currency`.`currency_id` = `c2s`.`currency_id`) WHERE `c2s`.`store_id` = ? AND `c2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `title` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `title` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		$sql .= " GROUP BY `currency`.`currency_id`";
@@ -151,7 +153,7 @@ class ModelCurrency extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

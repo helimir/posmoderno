@@ -48,9 +48,11 @@ class ModelUsergroup extends Model
 	public function getUsergroups($data = array()) 
 	{
 		$sql = "SELECT * FROM `user_group` WHERE 1=1";
+		$args = array();
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		$sql .= " GROUP BY group_id";
@@ -84,7 +86,7 @@ class ModelUsergroup extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute();
+		$statement->execute($args);
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}
 

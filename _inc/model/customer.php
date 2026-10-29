@@ -175,29 +175,38 @@ class ModelCustomer extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `customers` c LEFT JOIN `customer_to_store` c2s ON (`c`.`customer_id` = `c2s`.`customer_id`) WHERE `c2s`.`store_id` = ? AND `status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `c`.`customer_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `c`.`customer_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['filter_email'])) {
-			$sql .= " AND `c`.`customer_email` LIKE '" . $data['filter_email'] . "%'";
+			$sql .= " AND `c`.`customer_email` LIKE ?";
+			$args[] = $data['filter_email'] . '%';
 		}
 
 		if (isset($data['filter_mobile'])) {
-			$sql .= " AND `c`.`customer_mobile` LIKE '" . $data['filter_mobile'] . "%'";
+			$sql .= " AND `c`.`customer_mobile` LIKE ?";
+			$args[] = $data['filter_mobile'] . '%';
 		}
 
 		if (isset($data['filter_has_giftcard'])) {
-			$sql .= " AND `c`.`is_giftcard` = " . $data['filter_has_giftcard'];
+			$sql .= " AND `c`.`is_giftcard` = ?";
+			$args[] = $data['filter_has_giftcard'];
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `c`.`customer_id` IN (" . implode("','", $data['only']) . ")";
+			$sql .= " AND `c`.`customer_id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			foreach ($data['only'] as $only_id) {
+				$args[] = $only_id;
+			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `c`.`customer_id` != " . $data['exclude'];
+			$sql .= " AND `c`.`customer_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `c`.`customer_id`";
@@ -233,7 +242,7 @@ class ModelCustomer extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}
 

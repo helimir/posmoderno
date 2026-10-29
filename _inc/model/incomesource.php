@@ -65,31 +65,40 @@ class ModelIncomeSource extends Model
 	public function getIncomeSources($data = array()) 
 	{
 		$sql = "SELECT * FROM `income_sources` WHERE `status` = ?";
+		$args = array(1);
 
 		if (isset($data['filter_parent_id'])) {
-			$sql .= " AND `parent_id` = " . $data['filter_parent_id'];
+			$sql .= " AND `parent_id` = ?";
+			$args[] = $data['filter_parent_id'];
 		} elseif (!isset($data['filter_fetch_all'])) {
 			$sql .= " AND `parent_id` = 0";
 		}
 
 		if (isset($data['filter_source_name'])) {
-			$sql .= " AND `source_name` LIKE '" . $data['filter_source_name'] . "%'";
+			$sql .= " AND `source_name` LIKE ?";
+			$args[] = $data['filter_source_name'] . '%';
 		}
 
 		if (isset($data['filter_type'])) {
-			$sql .= " AND `type` = '" . $data['filter_type']."'";
+			$sql .= " AND `type` = ?";
+			$args[] = $data['filter_type'];
 		}
 
 		if (isset($data['filter_show_in_income'])) {
-			$sql .= " AND `show_in_income` = '" . $data['filter_show_in_income']."'";
+			$sql .= " AND `show_in_income` = ?";
+			$args[] = $data['filter_show_in_income'];
 		}
 
 		if (isset($data['only'])) {
-			$sql .= " AND `source_id` IN (" . implode("','", $data['only']) . ")";
+			$sql .= " AND `source_id` IN (" . implode(", ", array_fill(0, count($data['only']), "?")) . ")";
+			foreach ($data['only'] as $only_id) {
+				$args[] = $only_id;
+			}
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `source_id` != " . $data['exclude'];
+			$sql .= " AND `source_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `income_sources`.`source_id`";
@@ -123,7 +132,7 @@ class ModelIncomeSource extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array(1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

@@ -118,13 +118,16 @@ class ModelUnit extends Model
 		$store_id = $store_id ? $store_id : store_id();
 
 		$sql = "SELECT * FROM `units` LEFT JOIN `unit_to_store` unit2s ON (`units`.`unit_id` = `unit2s`.`uunit_id`) WHERE `unit2s`.`store_id` = ? AND `unit2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `unit_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `unit_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['exclude'])) {
-			$sql .= " AND `unit_id` != " . $data['exclude'];
+			$sql .= " AND `unit_id` != ?";
+			$args[] = $data['exclude'];
 		}
 
 		$sql .= " GROUP BY `units`.`unit_id`";
@@ -158,7 +161,7 @@ class ModelUnit extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

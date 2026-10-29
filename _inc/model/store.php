@@ -89,10 +89,12 @@ class ModelStore extends Model
 
 	public function getStores($data = array()) 
 	{
-		$sql = "SELECT * FROM `stores`";
+		$sql = "SELECT * FROM `stores` WHERE 1=1";
+		$args = array();
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		$sql .= " GROUP BY `store_id`";
@@ -126,7 +128,7 @@ class ModelStore extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute();
+		$statement->execute($args);
 
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}

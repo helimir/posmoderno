@@ -112,20 +112,24 @@ class ModelUser extends Model
 
 		$sql = "SELECT * FROM `users` LEFT JOIN `user_to_store` as `u2s` ON (`users`.`id` = `u2s`.`user_id`) 
 			WHERE `u2s`.`store_id` = ? AND `u2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `username` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `username` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
 		if (isset($data['filter_email'])) {
-			$sql .= " AND `email` LIKE '" . $data['filter_email'] . "%'";
+			$sql .= " AND `email` LIKE ?";
+			$args[] = $data['filter_email'] . '%';
 		}
 
 		if (isset($data['filter_mobile'])) {
-			$sql .= " AND `mobile` LIKE '" . $data['filter_mobile'] . "%'";
+			$sql .= " AND `mobile` LIKE ?";
+			$args[] = $data['filter_mobile'] . '%';
 		}
 
-		if (isset($data['filter_status']) && !is_null($data['filter_status'])) {
+		if (isset($data['filter_status']) && isset($data['filter_status'])) {
 			$sql .= " AND `u2s`.`status` = '" . (int)$data['filter_status'] . "'";
 		}
 
@@ -160,7 +164,7 @@ class ModelUser extends Model
 		}
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}
 

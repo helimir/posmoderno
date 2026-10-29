@@ -353,36 +353,43 @@ class ModelProduct extends Model
 			LEFT JOIN `boxes` bx ON (`p2s`.`box_id` = `bx`.`box_id`) 
 			LEFT JOIN `taxrates` tr ON (`p2s`.`taxrate_id` = `tr`.`taxrate_id`) 
 			WHERE `p2s`.`store_id` = ? AND `p2s`.`status` = ?";
+		$args = array($store_id, 1);
 
 		if (isset($data['filter_search_key'])) {
-			$sql .= " AND `p`.`p_name` LIKE '%" . $data['filter_search_key'] . "%'";
-		}	
+			$sql .= " AND `p`.`p_name` LIKE ?";
+			$args[] = '%' . $data['filter_search_key'] . '%';
+		}
 
 		if (isset($data['filter_category_id'])) {
-			$sql .= " AND `p`.`category_id` = '" . $data['filter_category_id'] . "'";
+			$sql .= " AND `p`.`category_id` = ?";
+			$args[] = $data['filter_category_id'];
 		}
 
 		if (isset($data['filter_brand_id'])) {
-			$sql .= " AND `p2s`.`brand_id` = '" . $data['filter_brand_id'] . "'";
+			$sql .= " AND `p2s`.`brand_id` = ?";
+			$args[] = $data['filter_brand_id'];
 		}
 
 		if (isset($data['filter_name'])) {
-			$sql .= " AND `p`.`p_name` LIKE '" . $data['filter_name'] . "%'";
+			$sql .= " AND `p`.`p_name` LIKE ?";
+			$args[] = $data['filter_name'] . '%';
 		}
 
-		if (isset($data['filter_purchase_price']) && !is_null($data['filter_sell_price'])) {
-			$sql .= " AND `p`.`purchase_price` LIKE '" . $data['filter_purchase_price'] . "%'";
+		if (isset($data['filter_purchase_price']) && isset($data['filter_sell_price'])) {
+			$sql .= " AND `p`.`purchase_price` LIKE ?";
+			$args[] = $data['filter_purchase_price'] . '%';
 		}
 
-		if (isset($data['filter_sell_price']) && !is_null($data['filter_sell_price'])) {
-			$sql .= " AND `p`.`sell_price` LIKE '" . $data['filter_sell_price'] . "%'";
+		if (isset($data['filter_sell_price']) && isset($data['filter_sell_price'])) {
+			$sql .= " AND `p`.`sell_price` LIKE ?";
+			$args[] = $data['filter_sell_price'] . '%';
 		}
 
-		if (isset($data['filter_quantity']) && !is_null($data['filter_quantity'])) {
+		if (isset($data['filter_quantity']) && isset($data['filter_quantity'])) {
 			$sql .= " AND `p`.`quantity_in_stock` = '" . (int)$data['filter_quantity'] . "'";
 		}
 
-		if (isset($data['filter_status']) && !is_null($data['filter_status'])) {
+		if (isset($data['filter_status']) && isset($data['filter_status'])) {
 			$sql .= " AND `p2s`.`status` = '" . (int)$data['filter_status'] . "'";
 		}
 		
@@ -421,7 +428,7 @@ class ModelProduct extends Model
 		}		
 
 		$statement = $this->db->prepare($sql);
-		$statement->execute(array($store_id, 1));
+		$statement->execute($args);
 		
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
 	}
