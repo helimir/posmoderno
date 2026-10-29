@@ -206,6 +206,17 @@ The server verifies in this order: known client → timestamp within `SYNC_MAX_A
 3. Master: set `SYNC_LEGACY_AUTH=false` once **every** terminal is updated. Before that, leave it `true`.
 4. Master: set `SYNC_REQUIRE_HTTPS=true` (the default) and `SYNC_ALLOWED_IPS` if the terminals have static IPs.
 
+**Rotating the legacy credential without an outage.** The original credential (`itsolution24`/`1993`) is public: it is hardcoded in the source the vendor distributes to every customer. To rotate it without cutting off terminals that have not been updated yet, the master also accepts a **migration window**:
+
+```
+# master .env
+SYNC_LEGACY_USERNAME=<nuevo>
+SYNC_LEGACY_PASSWORD=<nuevo-secreto>
+SYNC_LEGACY_PREVIOUS=<usuario-actual>:<clave-actual>   # accepted only during the window
+```
+
+`SYNC_LEGACY_PREVIOUS` holds `user:secret` pairs separated by commas. It is **master-only** — a terminal never reads it, it only sends the single `SYNC_LEGACY_USERNAME`/`SYNC_LEGACY_PASSWORD` it was given. Once the whole fleet is on the signed path, clear `SYNC_LEGACY_PREVIOUS` and set `SYNC_LEGACY_AUTH=false`.
+
 **Never change the v2 payload shape without updating both sides** — `_inc/helper/sync.php` is shared, so the signature is computed and verified by the same code.
 
 ---

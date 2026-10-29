@@ -65,6 +65,38 @@ if (!function_exists('sync_clients')) {
     }
 }
 
+if (!function_exists('sync_legacy_previous')) {
+    /**
+     * Credenciales heredadas que se siguen aceptando durante la ventana de
+     * migracion, en formato "usuario:clave" separados por comas.
+     *
+     * Es lo que permite rotar la credencial del maestro sin dejar fuera a los
+     * POS que aun no han sido actualizados. Cuando toda la flota este
+     * migrada, se vacia esta variable y se pone SYNC_LEGACY_AUTH=false.
+     *
+     * @return array usuario => clave
+     */
+    function sync_legacy_previous()
+    {
+        $pairs = array();
+
+        foreach (explode(',', (string) env_get('SYNC_LEGACY_PREVIOUS', '')) as $pair) {
+            $pair = trim($pair);
+            if ($pair === '' || strpos($pair, ':') === false) {
+                continue;
+            }
+            list($user, $secret) = explode(':', $pair, 2);
+            $user = trim($user);
+            $secret = trim($secret);
+            if ($user !== '' && $secret !== '') {
+                $pairs[$user] = $secret;
+            }
+        }
+
+        return $pairs;
+    }
+}
+
 if (!function_exists('sync_config')) {
     /**
      * Configuracion efectiva de la sincronizacion, leida del .env.
@@ -89,6 +121,7 @@ if (!function_exists('sync_config')) {
                 'legacy_auth'     => env_bool('SYNC_LEGACY_AUTH', true),
                 'legacy_username' => (string) env_get('SYNC_LEGACY_USERNAME', ''),
                 'legacy_password' => (string) env_get('SYNC_LEGACY_PASSWORD', ''),
+                'legacy_previous' => sync_legacy_previous(),
                 'require_https'   => env_bool('SYNC_REQUIRE_HTTPS', true),
                 'allow_localhost' => env_bool('SYNC_ALLOW_LOCALHOST', false),
                 'max_age'         => env_int('SYNC_MAX_AGE', 300),
@@ -260,11 +293,21 @@ if (!function_exists('sync_verify')) {
         }
 
         $password = isset($post['password']) ? (string) $post['password'] : '';
-        if (!hash_equals($cfg['legacy_username'], $username) || !hash_equals($cfg['legacy_password'], $password)) {
-            return array('ok' => false, 'reason' => 'bad_credentials');
+
+        // Credencial vigente.
+        if (hash_equals($cfg['legacy_username'], $username)
+            && hash_equals($cfg['legacy_password'], $password)) {
+            return array('ok' => true, 'client' => $username, 'mode' => 'legacy');
         }
 
-        return array('ok' => true, 'client' => $username, 'mode' => 'legacy');
+        // Credenciales anteriores: se aceptan solo durante la ventana de
+        // migracion, configurada en SYNC_LEGACY_PREVIOUS.
+        if (isset($cfg['legacy_previous'][$username])
+            && hash_equals($cfg['legacy_previous'][$username], $password)) {
+            return array('ok' => true, 'client' => $username, 'mode' => 'legacy-previous');
+        }
+
+        return array('ok' => false, 'reason' => 'bad_credentials');
     }
 }
 
