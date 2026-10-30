@@ -153,34 +153,17 @@ select:focus-visible,
 .skin-yellow .main-header > .navbar .nav > li > a:focus,
 .skin-yellow .main-header > .navbar .nav > .active > a { background-color: var(--m-warning); color: #ffffff; }
 
-.main-sidebar {
-    /* No se toca el width: el tema lo gestiona con !important segun el
-       estado colapsado/expandido, y la geometria es cosa del POS. */
-    background-color: var(--m-surface);
-    border-right: 1px solid var(--m-border);
-}
-
-.main-sidebar .sidebar {
-    background-color: var(--m-surface);
-}
-
-.main-sidebar .nav > li > a {
-    color: var(--m-text);
-    border-bottom: 1px solid var(--m-border);
-}
-
-.main-sidebar .nav > li > a:hover,
-.main-sidebar .nav > li > a:focus {
-    background-color: var(--m-surface-alt);
-    color: var(--m-text-strong);
-}
-
-.main-sidebar .nav > li.active > a {
-    background-color: var(--m-primary-soft);
-    color: var(--m-primary-hover);
-    border-left: 3px solid var(--m-primary);
-}
-
+/*
+ * El sidebar lo lleva el skin, no esta capa.
+ *
+ * El fondo oscuro no lo pone .main-sidebar: lo pone el wrapper
+ * (.skin-black .wrapper, .skin-black .main-sidebar { background-color:#222d32 })
+ * y .main-sidebar es transparente a proposito para que se vea el wrapper.
+ * Pintarlo aqui lo dejaba blanco.
+ *
+ * Ademas el markup del menu es .sidebar-menu, no .nav, asi que las reglas
+ * de enlaces de abajo nunca habrian aplicado.
+ */
 /* ==================================================================
    4. Cajas (tarjetas)
    ================================================================== */
