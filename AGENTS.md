@@ -11,7 +11,8 @@ Vendored PHP libs live in `_inc/vendor/`.
 ## Setup
 
 1. Import `BASE DE DATOS/pos_moderno.sql` into a MySQL/MariaDB DB (phpMyAdmin). **There is no installer** — `install/` does not exist.
-2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
+2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.
+3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `APP_DEFAULT_LANGUAGE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
    - `SUBDIRECTORY` is derived from the path of `APP_URL` unless `APP_SUBDIRECTORY` is set explicitly.
    - `FILEMANAGERURL` defaults to `APP_URL . '/storage/products'`.
 4. Serve over Apache/PHP (`.htaccess` sets `max_execution_time 600`; needs `AllowOverride`).
@@ -117,19 +118,28 @@ Generated output, all checked in:
 | `assets/itsolution24/angularmin/{angular,filemanager,modal}.js` | `angular/lib/**`, `angular/filemanager/js/**`, `angular/modals/*.js` |
 | `assets/itsolution24/cssmin/{main,pos,login}.css` | **NOT BUILT — see below** |
 
-### ⚠️ CSS trap
+### ⚠️ CSS: two layers, only one is live
 
-**All three `mix.styles(...)` blocks in `webpack.mix.js` are commented out.** The CSS build does not run. `config.php` has `USECOMPILEDASSET = true`, so the app loads **only** `cssmin/*.css` at runtime.
+**`mix.styles(...)` is commented out** in `webpack.mix.js`, so the CSS bundle is never rebuilt. But the app does **not** rely on it: `admin/header.php` loads `cssmin/main.css` **first** and then loads every stylesheet again individually — including the app's own styles **straight from source**:
 
-→ Editing `assets/itsolution24/css/*.css` has **zero** runtime effect. Edit `assets/itsolution24/cssmin/*.css` directly, or re-enable `mix.styles` and rebuild.
+| Loaded from source (edits apply immediately) | Loaded only as a bundle |
+|---|---|
+| `css/theme.css` (104 KB, 956 rules) | `cssmin/main.css` (413 KB) |
+| `css/main.css`, `css/responsive.css`, `css/print.css`, `css/rtl.css` | `cssmin/pos.css`, `cssmin/login.css` |
+| `css/skins/skin-*.css` (5 files, scoped by `body.skin-*`) | |
+| `css/pos/{skeleton,pos,responsive}.css` | |
+| `assets/bootstrap/css/bootstrap.min.css` | |
 
-`mix-manifest.json` lists only the 3 CSS files and no JS — it is a stale CSS-era leftover; ignore it.
+- **Editing `assets/itsolution24/css/*.css` DOES take effect** — the source files are loaded *after* the bundle, so they win the cascade. No build needed.
+- `cssmin/main.css` is effectively **dead weight**: everything in it is loaded again right after. Dropping that one `<link>` removes ~413 KB from every page load.
+- What you *cannot* change without a rebuild is the **minified vendor CSS** (`bootstrap.min.css`, `bootstrap-rtl.min.css`) — edit `bootstrap.css` and nothing happens.
+- The POS screen (`css/pos/*`) is pixel-tuned for touchscreens and receipt printers, and `css/print.css` drives the printed receipt. Changes there need care.
+- `webpack.mix.js` lists 70 of the 101 files in `angular/modals/`. Modals missing from the bundle must be loaded with an explicit `<script>` tag — see how `admin/pos.php` loads `HoldingOrderModal.js` etc. **Editing `angular/controllers/*.js` needs no build**: they are loaded per page via `$document->addScript()`. Only `assets/itsolution24/js/*.js` and `angular/modals/*.js` are bundled.
+- `mix-manifest.json` lists only the 3 CSS files and no JS — a stale CSS-era leftover; ignore it.
+- `gulpfile.js` only has `svgstore` / `svgmstore` (SVG sprite → `assets/itsolution24/img/iconmin/`). Nothing else.
+- `package.json`'s `lint` scripts target `resources/assets/...`, a directory that **does not exist** — and `eslint`/`stylelint` are not even in `devDependencies`. `npm run lint` is broken. There is no lint or test config in the repo.
 
-`webpack.mix.js` lists 70 of the 101 files in `angular/modals/`. Modals missing from the bundle must be loaded with an explicit `<script>` tag — see how `admin/pos.php` loads `HoldingOrderModal.js` etc.
 
-`gulpfile.js` only has `svgstore` / `svgmstore` (SVG sprite → `assets/itsolution24/img/iconmin/`). Nothing else.
-
-`package.json`'s `lint` scripts target `resources/assets/...`, a directory that **does not exist** — and `eslint`/`stylelint` are not even in `devDependencies`. `npm run lint` is broken. There is no lint or test config in the repo.
 
 ---
 
