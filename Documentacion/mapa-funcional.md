@@ -331,7 +331,7 @@ No hay pantalla propia: se opera **desde el POS**.
 - ⚠ `ModelQuotation::createQuotation` inserta `quotation_info` **sin `is_order`** → siempre 0 → nunca hay pedidos.
 - ⚠ Los permisos de las acciones se evalúan con `&&`/`||` sin paréntesis (`_inc/order.php:510-517`).
 
-**Decisión pendiente:** ¿los pedidos son un módulo real o la cotización con otro nombre? Si el negocio no los usa, se descarta el módulo entero; si los usa, hay que rehacerlo como versión de cotización con su propio estado.
+**Decisión tomada (2026-10-30, §9.1):** los pedidos **son un módulo real en uso**, así que el módulo **se rehace** como entidad de primera clase: estructura propia, máquina de estados propia y conversión a factura funcionando. El diseño actual no se porta.
 
 ### 3.7 Devoluciones de venta (`admin/sell_return.php`)
 
@@ -1112,7 +1112,7 @@ Usuarios semilla: `mitienda@gmail.com` (Fredy Alegre, grupo 1), `cashier@gmail.c
 | **Checkout y toda operación de escritura** | **Rehacer con transacciones** obligatorias y fila bloqueada (`SELECT … FOR UPDATE`) en stock y saldo. |
 | **Contabilidad** | **Rehacer como libro con tipos de movimiento explícitos**, no por flags booleanos dispersos. |
 | **`_init.php`** | **No tocar** (está ofuscado), pero **no reescribir en runtime**. La sustitución es la soporte del sistema nuevo. |
-| **Módulo de pedidos (`admin/order.php`)** | **Descartar** salvo decisión explícita del negocio (§3.6). |
+| **Módulo de pedidos (`admin/order.php`)** | **Rehacer** (decisión 1: es un módulo real en uso). No se porta el clon roto: se diseña como entidad de primera clase con estructura, estados y conversión a factura propios (§3.6). |
 | **`admin/purchase_edit.php`** | **Descartar** (duplicado de cotización). |
 | **`admin/report_pos_overview.php`** | **Descartar** (clon de P&G). |
 | **`admin/banner.php`** | **Decidir**: o se enlaza y se arregla, o se descarta. Hoy es inaccesible. |
@@ -1201,73 +1201,237 @@ Usuarios semilla: `mitienda@gmail.com` (Fredy Alegre, grupo 1), `cashier@gmail.c
 | `SSP::simple` + `aoColumns` | Endpoint de listados paginated con un contrato declarado (filtros, orden, columnas visibles por rol) | Fin del desalineamiento HTML/JSON |
 | Sin tests | Suite de tests del dominio: checkout, FIFO, impuestos, crédito, cuotas, transferencias, reversión por devolución | La garantía que hoy no existe |
 
-### 8.4 Plan de migración por fases
+### 8.4 Plan de construcción y corte (4 fases)
 
-**Fase 0 — Cimientos (2-3 semanas)**
+**Fase 0 — Cimientos (3-4 semanas)**
 1. Crear el repositorio nuevo, CI, y el esqueleto de la app + base de datos.
-2. Escribir el **mapeo de esquema**: migraciones que creen el modelo destino desde cero con los mismos datos (ETL desde MySQL, no una copia de tablas).
-3. Escribir un **importador idempotente** de las 73 tablas, con validación de recuento y de importes al cierre de cada tabla.
-4. Escribir los **tests del dominio** sobre el modelo destino (FIFO, totales, IVA, crédito) — son la prueba de que la migración no cambió las reglas.
+2. **Migración de esquema por migraciones** (no copia de tablas): cada tabla del modelo destino, sus FKs reales y sus índices.
+3. **Capa de país y fiscal** (§8.6) como parte del esquema, no como configuración posterior: tablas `countries`, `fiscal_regimes`, `tax_categories`, `tax_rates`, `fiscal_series`, `currencies`, `number_formats`, `address_formats`, `sms_providers`.
+4. **Numeración fiscal atómica**: `fiscal_series` (por tienda + tipo + rango de números) con reserva transaccional (`SELECT … FOR UPDATE` o `INSERT … ON CONFLICT DO UPDATE … RETURNING`). El correlativo **nunca** se deriva de `rowCount()` ni del "último registro" (§6, trampas 24 y la regresión de `generate_invoice_id()`).
+5. **Seed data de catálogos** por país, con ejemplos nuevos y limpios (datos de demostración, no datos reales): Venezuela como perfil por defecto.
+6. **Tests del dominio** sobre el modelo destino: FIFO, totales, IVA, crédito, cuota, numbering fiscal concurrente, transferencia entre tiendas. Son la garantía de que las reglas de negocio no cambiaron.
+
+> **Nota sobre los datos**: la decisión es *verde*. No hay migración de datos históricos. Eso elimina la Fase de importador y todo el riesgo de arrastrar datos malformados, pero **obliga** a congelar los saldos de apertura (stock, saldos de cliente/proveedor, caja) como configuración inicial por tienda, y a decidir si el legacy queda en sólo lectura como archivo histórico (§9, decisión 9).
 
 **Fase 1 — Backend del núcleo (4-6 semanas)**
 5. Auth, roles y permisos reales; tiendas y scoping.
-6. Catálogo: productos, categorías, marcas, unidades, cajas, impuestos, proveedores, clientes.
+6. Catálogo: productos, categorías, marcas, unidades, cajas, **tipos de impuesto del perfil fiscal**, proveedores, clientes.
 7. Compras + entradas de stock por lotes.
-8. **Ventas / checkout transaccional** (el módulo crítico) + recibos + impresión.
+8. **Ventas / checkout transaccional** (el módulo crítico) + **emisión del documento fiscal** (reserva de correlativo atómica) + recibos.
 9. Caja y libro contable.
+10. **Impresión**: modo navegador + **agente de impresión en LAN** + modo servidor (§10.2).
 
-**Fase 2 — Operación (4-6 semanas)**
-10. Devoluciones (venta y compra), notas de crédito, ajustes.
-11. Transferencias entre almacenes.
-12. Cuotas, préstamos, tarjetas de regalo, extractos de cliente.
-13. Cotizaciones y pedidos en espera.
-14. Cola: SMS, impresión remota, backups.
+**Fase 2 — Operación (5-7 semanas)**
+11. Devoluciones (venta y compra), notas de crédito, ajustes.
+12. Transferencias entre almacenes.
+13. Cuotas, préstamos, tarjetas de regalo, extractos de cliente.
+14. **Pedidos** (rehecho como entidad de primera clase) y cotizaciones, con conversión a factura.
+15. Cola: SMS/WhatsApp, impresión, backups.
+16. **Sincronización offline→online**: servicio nuevo hablando el **protocolo v2** (firma, nonce, `SYNC_MAX_AGE`) sin tocar `_inc/helper/sync.php`.
 
-**Fase 3 — Reportes y migración final (3-4 semanas)**
-15. Los 21 reportes, sobre el modelo nuevo (y corregir los que estaban mal: impuestos de compra, beneficio real, cobros).
-16. Panel y analítica.
-17. **Migración en vivo**: drier de 2 semanas con el sistema legacy y el nuevo en paralelo sobre el mismo negocio, comparando totales a diario (facturas, cobros, stock, caja) hasta cuadrar.
-18. Corte: congelar legacy, última sincronización, cambiar DNS, mantener el legacy en sólo lectura durante 30 días.
+**Fase 3 — Reportes y corte (3-4 semanas)**
+17. Los 21 reportes, sobre el modelo nuevo (y corregir los que estaban mal: impuestos de compra, beneficio real, cobros).
+18. Panel y analítica.
+19. **Drier de 2 semanas**: el sistema nuevo opera sobre el negocio real **en paralelo con el legacy**, comparando totales a diario (facturas, cobros, stock, caja, correlativos) hasta cuadrar.
+20. **Corte**: se congela el legacy, se hace la última sincronización, se enciende el DNS nuevo **y el `sync.php` viejo se apaga el mismo día** (§10.5). El legacy queda en sólo lectura como archivo durante 30 días.
 
 **Riesgos a vigilar:**
 
 | Riesgo | Mitigación |
 |---|---|
 | El negocio depende de comportamientos que el legacy tiene "bugs" (p. ej. que la devolución se vea pero no se pueda editar) | Documentar los comportamientos **a mano** en el §3 antes de migrar; convertir cada decisión en un test. |
-| Datos históricos malformados (contadores de caja incorrectos, categorías `is_hide=1`) | No migrar los contadores derivados (`bank_accounts.total_*`): se recalculan. Migrar sólo los hechos (`bank_transaction_info/price`). |
-| El POS debe seguir funcionando durante la transición | El POS nuevo se despliega **antes** que el backoffice, en un solo terminal, y se despliega por.store. |
-| La sincronización offline→online es crítica | Mantener `sync.php` y su protocolo v2 **intactos** hasta el final; el nuevo sistema debe hablar el mismo protocolo desde el primer día (adaptador, no reescritura). |
-| La impresión de tickets es un punto de fallo físico | Mantener el motor actual de tickets como componente aislado en el nuevo stack hasta que la impresión sea estable. |
+| **Saldo de apertura incorrecto al cortar** (proyecto verde: no hay histórico que lo respalde) | Congelar saldos con fecha y responsable acordados **antes** de la Fase 0 (§10.3). Es el riesgo #1 de un arranque en verde. |
+| **Correlativos fiscales duplicados** si dos terminals emiten a la vez | Reserva atómica con reserva de fila (§10.1) + test de concurrencia. |
+| **El agente de impresión no se instala en los terminales** | Instalador sin intervención técnica (MSI/NSIS), arranque automático, heartbeat visible. |
+| El POS debe seguir funcionando durante la transición | El POS nuevo se despliega **antes** que el backoffice, en un solo terminal, y se despliega por tienda. |
+| La sincronización offline→online es crítica | Mantener `sync.php` y su protocolo v2 **intactos** hasta el corte; el nuevo sistema lo habla como adaptador desde el primer día. |
+| La impresión de tickets es un punto de fallo físico | El estado `issued` del documento fiscal **no** depende de la impresión: se puede reimprimir sin reemitir. |
 
-### 8.5 Módulos que deben quedar fuera del alcance inicial
+### 8.5 Configuración por país (Venezuela por defecto, extensible a Latinoamérica)
+
+**Requisito transversal**: el sistema es **por defecto para Venezuela**, pero debe ser **configurable para otros países**, en una segunda fase, con foco en Latinoamérica. Esto NO es "internacionalizar los textos": es que el motor fiscal, el de impuestos, el de numeración y el de documentos sean **datos, no código**.
+
+> Decisión de diseño innegociable: **ninguna regla fiscal vive en el código**. Si el IVA por defecto es 16% y en Chile es 19%, y en México el ISR es otro, eso es configuración. El legacy ya tiene la semilla del problema: `preference[invoice_view]` = `standard|tax_invoice|indian_gst` condensa tres países en un `switch` dentro del PHP (`_inc/helper/invoice.php:550,715`), con campos `gst_reg_no` (India) y `vat_reg_no` (Venezuela) conviviendo en el mismo formulario. El sistema nuevo convierte eso en **perfiles fiscales**.
+
+#### 8.5.1 Lo que hay que parametrizar
+
+| Dimensión | Venezuela (defecto) | Extensible a |
+|---|---|---|
+| **Impuesto** | IVA 16% (gravable), exento / no gravado / exonerado | Categorías de impuesto por país (IVA/IGST para Chile, IVA + ISR + IEPS para México, IVA + DUT para Colombia, IVA + IGBM para Panamá…) |
+| **Régimen fiscal** | Ordinario, simplificado | Perfil por país con sus reglas de crédito fiscal |
+| **Numeración de documento** | Correlativo consecutive por tienda, sin saltos (`000-00000000`), con rango autorizado | Series por tienda + tipo, con rangos y validez |
+| **Documento electrónico** | Comprobante digital (XML + PDF + QR + hash) ante SENIAT | Estándares por país: DTE (Chile), CFDI 4.0 (México), DIAN UBL 2.1 (Colombia), factura electrónica Panamá |
+| **Identificación del emisor** | RIF + `vat_reg_no` | Identificador fiscal por país (RUC, NIT, RIF, NIT…) |
+| **Moneda** | VES, 2 decimales | Moneda + nº de decimales + posición del símbolo + formato de miles |
+| **Redondeo** | Por línea vs. por total | Configurable (crítico: los totales no cuadran si el redondeo no es explícito) |
+| **Impuesto retenido** | IVA retenido | Retenciones por tipo (retención de IVA, ISLR…) |
+| **Dirección e IDs fiscales** | Dirección fiscal del emisor | Formato de dirección, ID fiscal del cliente, código postal |
+| **Teléfono / documento de identidad** | Cédula + teléfono | Formato por país |
+| **Idioma** | Español ( Venezuela) | Español, inglés, portugués… por tienda/país |
+| **Formato de fecha/hora** | DD/MM/AAAA, huso `America/Caracas` | Por país + por tienda (el legacy ya resuelve el timezone por tienda) |
+| **Numeración de teléfono / SMS** | +58 412-1234567 | Regla por país (el `phone` se valida en `sms_send.php` y en el POS) |
+| **Cierre fiscal / retenciones** | Cierre y declaración de IVA | Período fiscal, retenciones y declaración |
+
+#### 8.5.2 Tablas de la capa de país
+
+```
+countries                 →VEN, CL, MX, CO, PA, … (code, name, locale, currency, timezone, phone_format)
+fiscal_profiles           →por país: tipo de documento, estándar electrónico, campos obligatorios, tipos de impuesto
+fiscal_series            →por tienda + fiscal_profile + tipo: prefijo, next_number, from_number, to_number, valid_from, valid_to
+tax_categories            →iva_gravable, exento, no_gravado, exonerado, retenido (por perfil)
+tax_rates                 →por perfil + categoría + vigencia: percentage, inclusive/exclusive, rounding_rule
+currencies                →code, decimals, symbol_position, thousand_separator, decimal_separator
+number_formats            →por país: date_format, invoice_number_format, phone_format, document_id_format
+payment_methods           →con Reglas de validación por país (¿tarjeta? ¿domiciliación?)
+sms_providers             →con credenciales en el secret store, NO en la tabla
+```
+
+#### 8.5.3 Reglas de implementación
+
+1. **Un `fiscal_profile` activo por tienda.** La tienda Venezuela trae el perfil venezolano; una tienda en Chile, el chileno. El motor resuelve el perfil y todo lo demás sale de tablas.
+2. **Resolución fiscal en runtime, no en código.** `TaxCalculator` recibe el perfil + las líneas y devuelve importes. Sin `if ($country == 'VE')`.
+3. **El documento fiscal es una entidad de primera clase.** `fiscal_documents` (tipo, perfil, serie, número, hash, estado de emisión, XML, PDF, respuesta del proveedor). Una venta sin documento fiscal válido **no se puede emitir**; una factura de venta puede existir en estado `draft` (cotización, pedido, venta no fiscalizada) y se fiscaliza al confirmar.
+4. **Los impuestos se calculan una vez, en el servidor, y se persisten.** El cliente nunca calcula impuestos (el legacy calcula en Angular y recalcula en PHP: dos fuentes de verdad).
+5. **La reserva de correlativo es atómica y auditable.** Toda reserva queda en `fiscal_document_reservations` con quién y cuándo la tomó, incluso si la factura se anula (el número NO se reutiliza: en Venezuela el correlativo no retrocede).
+6. **El campo `invoice_view` desaparece.** Se reemplaza por `fiscal_profile` + `tax_rates`. El `switch` de tres países del legacy no se porta.
+
+#### 8.5.4 Fase 2 del proyecto (Latinoamérica)
+
+Se implementa **después** de que Venezuela esté en producción, pero el **esquema y el motor** deben admitirlo desde el día 1. El trabajo de fase 2 se reduce a: añadir filas (país, perfil, tipos de impuesto, formatos, series) y, si el país exige otro estándar electronic, un adaptador nuevo en `ElectronicInvoiceProvider` (interfaz común: `issue()`, `cancel()`, `queryStatus()`, `downloadXml()`).
+
+⚠ **Señal de alarma a vigilar**: si el día 2 aparece un `if ($country === 'VE')` en el código de negocio, la arquitectura se está filtrando. El control debe ser: "cambiar de país = insertar filas, no tocar código".
+
+### 8.6 Módulos que deben quedar fuera del alcance inicial
 
 Para no repetir el problema del legacy (110 pantallas y un menú de 117 entradas), el alcance inicial debe ser explícito:
 
 | Fuera de alcance inicial | Motivo |
 |---|---|
-| Módulo de pedidos (`admin/order.php`) | Roto y huérfano. Decidir con el negocio antes. |
-| Banners | Huérfano y sin permisos. |
+| Facturación electrónica **de otros países** (DTE Chile, CFDI México, DIAN Colombia) | Segunda fase. La **arquitectura** sí entra desde la Fase 0 (§8.5); los adaptadores por país, no. |
+| Banners | Huérfano y sin permisos en el legacy. Módulo nuevo, no migración. |
 | Analítica avanzada / cohortes | No existe hoy; es un módulo nuevo, no una migración. |
-| Facturación electrónica / SENIAT | Es un requisito **nuevo** para Venezuela, no una migración del legacy. Planificar aparte. |
 | Kiosco de autoservicio | Módulo nuevo. |
 | Aplicación móvil nativa | El PWA cubre el caso de uso. |
 
+**Dentro del alcance inicial** (por decisión, §9): módulo de **pedidos** (rehecho), **facturación electrónica venezolana** (desde la Fase 0 en el diseño), **impresión en red local + servidor** (con agente LAN), **sincronización offline→online**, **cuotas** (lógica conservada) y **SMS/WhatsApp**.
+
 ---
 
-## 9. Decisiones abiertas (requieren respuesta del negocio)
+## 9. Decisiones tomadas (2026-10-30)
 
-| # | Decisión | Impacto |
+| # | Decisión | Respuesta | Consecuencia de diseño |
+|---|---|---|---|
+| 1 | ¿Los **pedidos** (`admin/order.php`) son un módulo real? | **Sí, se usan** | El módulo **se rehace** como entidad de primera clase, no como el clon roto actual. |
+| 2 | ¿Impresión en red local, en servidor, o ambas? | **Ambas, si se puede** | Requiere **dos destinos de impresión** y un agente en la LAN (§10.2). |
+| 3 | ¿La **sincronización offline→online** sigue viva? | **Sí** | El protocolo v2 es un **contrato fijo**: adaptador desde el día 1, `_inc/helper/sync.php` no se toca. |
+| 4 | ¿Hace falta **facturación electrónica**? | **Sí** | La numeración fiscal pasa a ser **atómica y auditable** (§10.1). Nada de `rowCount()`. |
+| 5 | ¿Migrar datos históricos o arrancar limpio? | **Datos nuevos, limpios, con ejemplos nuevos** | Proyecto **verde**. Sin importador. Se configuran saldos de apertura y seed data por país. |
+| 6 | ¿Multi-tienda? | **Sí** | Se mantiene el patrón maestro/bridge, con FKs reales. |
+| 7 | ¿Se conserva el **modelo de cuotas** tal cual? | **Sí** | Se replica la lógica de interés simple (`interest_percentage` sobre el payable), con tests que la fijan. |
+| 8 | ¿Se conservan **WhatsApp/SMS**? | **Sí** | Se conserva la abstracción de gateway; las credenciales pasan a variables de entorno. |
+| 9 | ¿El nuevo sistema reemplaza al legacy o conviven? | **Nuevo** (reemplaza) | Corta seco. El legacy queda en sólo lectura como archivo, no como sistema-paralelo. |
+| 10 | ¿Quién mantiene el nuevo sistema? | **Equipo nuevo** | CI, tests y documentación son requisitos del día 1, no extras. |
+
+### 9.1 Requisito transversal añadido
+
+> **El sistema es por defecto para Venezuela, pero debe ser aplicable y configurable a otros países**, en una segunda fase, con foco en **Latinoamérica**.
+
+Esto se traduce en la **capa de país y fiscal** del §8.5: el motor fiscal, el de impuestos, el de numeración de documentos, los formatos y el redondeo son **datos**, no código. Venezuela es el **perfil por defecto**;inear un país es insertar filas, no escribir un `if`.
+
+### 9.2 Lo que cambia en el alcance respecto a lo que se asumía antes
+
+| Antes (suposición) | Ahora (decidido) | Impacto en el plan |
 |---|---|---|
-| 1 | ¿Los **pedidos** (`admin/order.php`) son un módulo real en uso? | Si sí, hay que rehacerlo; si no, se descarta. |
-| 2 | ¿Se conserva la **impresión en red/local** (`printers`, `PrintReceiptModal`) o se migra a impresión de servidor? | Cambia el modelo de `stores` y el worker de impresión. |
-| 3 | ¿La **sincronización offline→online** sigue siendo requisito en Venezuela? | Si sí, el protocolo v2 es un contrato fijo: se implementa como adaptador desde el día 1. |
-| 4 | ¿Hace falta **facturación electrónica** (SENIAT / Venezuela)? | Módulo nuevo con impacto en `selling_info`/`selling_price`. |
-| 5 | ¿Se migran los **datos históricos** o se arranca en limpio con el saldo inicial? | Decidible: los saldos y el stock se recalculan; los movimientos se pueden archivar aparte. |
-| 6 | ¿Cuántas **tiendas** y cuántos **usuarios** reales hay? | Determina si el multi-store se mantiene o se simplifica a un solo almacén con varias ubicaciones. |
-| 7 | ¿Se conserva el **modelo de cuotas con interés** tal cual? | La lógica actual (`interest_percentage` sobre el payable) es simple; si el negocio necesita amortización real, es un módulo nuevo. |
-| 8 | ¿Se conserva el **cobro por WhatsApp/SMS** con gateways concretos? | Define qué credenciales se migran y a dónde. |
-| 9 | ¿El **nuevo sistema** replaces al legacy, o conviven? | Si conviven, hay que definir la fuente de verdad por tabla durante la transición. |
-| 10 | ¿Quién mantiene el **nuevo** sistema a partir del día 1? | El legacy no tiene CI ni tests; el nuevo debe empezar con ambos desde el primer commit. |
+| Migrar 73 tablas + importador | **Verde**: esquema nuevo + seed data | Se elimina el importador y el riesgo de datos malformados. Se **suman** la capa de país y la numeración fiscal atómica. |
+| Impresión en red local **o** servidor | **Ambas** | Se **suma** un agente de impresión en LAN (§10.2). |
+| Facturación electrónica "para más adelante" | **Ahora, en el diseño** | La reserva de correlativo entra en la Fase 0, no en la Fase 3. |
+| Un solo país | **Venezuela por defecto, extensible** | Se **suma** la tabla de países, perfiles fiscales, series y formatos (§8.5). |
+| Pedidos: descartar | **Se rehacen** | Entra en la Fase 2 como módulo de primera clase. |
+
+---
+
+## 10. Implicaciones de arquitectura que exigen diseño explícito
+
+### 10.1 Numeración fiscal atómica (decisión 4 — bloqueante)
+
+**El problema en el legacy.** `generate_invoice_id()` (`_inc/helper/invoice.php:139-172`) deriva el correlativo del "último invoice_id" leído, le suma 1 y comprueba con `hasInvoice()`. No reserva nada. Además la reintento recursivo de la línea 160 **descarta el valor devuelto**, así que nunca reintenta de verdad. `unique_transaction_ref_no()` (`:95-109`) usa `rowCount()` de un `SELECT` — que en PDO no es el número de filas afectadas — y suma 1. Con dos terminales vendiendo a la vez, **dos documentos reciben el mismo número**. En Venezuela eso invalida la factura.
+
+**El diseño correcto.**
+
+```
+fiscal_series
+  id, store_id, fiscal_profile_id, document_type, prefix,
+  next_number, from_number, to_number, valid_from, valid_to, status
+
+fiscal_documents
+  id, fiscal_series_id, number, store_id, customer_id,
+  issue_date, subtotal, tax_total, total, currency,
+  status (draft | issued | cancelled | void),
+  hash, xml_path, pdf_path, provider, provider_response, created_by, created_at
+
+fiscal_document_reservations
+  id, fiscal_series_id, number, reserved_by, reserved_at, consumed_at, voided_at
+```
+
+- La reserva se hace **dentro de la misma transacción** que la factura: `UPDATE fiscal_series SET next_number = next_number + 1 WHERE id = ? AND next_number <= to_number RETURNING next_number - 1` (o `SELECT … FOR UPDATE` equivalente). Si la transacción falla, el número **se devuelve**; si la factura se anula, el número **no se reutiliza** (queda consumido con estado `void`).
+- `fiscal_document_reservations` deja **traza de auditoría** de quién tomó cada número, incluso los cancelados. En Venezuela el correlativo no retrocede.
+- El legacy NO se porta. Esta tabla es nueva.
+
+### 10.2 Impresión: red local + servidor (decisión 2)
+
+El legacy ya tiene los dos modos (`remote_printing`: 0 = "Web Browser", 1 = "PHP Server") y el botón "ver" de `admin/printer.php` es un stub. Pero **imprimir desde el navegador no es imprimir**: exige que el cajero esté delante, con el popup abierto, y falla en silencio si la impresora no responde.
+
+**El diseño correcto: un trabajo de impresión con destino.**
+
+```
+print_jobs
+  id, store_id, printer_id, template_id, document_type, document_id,
+  payload (json), copies, status (queued|printing|done|error),
+  error, printed_at, created_by, created_at
+
+print_targets
+  id, printer_id, transport (browser | lan_agent | server_socket),
+  host, port, charset, paper_width, copies_default
+```
+
+- **`browser`**: el navegador genera el ESC/POS y lo envía a la impresora local. Es el modo de respaldo, y el que se usa si el agente no responde.
+- **`lan_agent`**: un **agente de impresión** pequeño que corre en la LAN de la tienda (Windows/Linux, servicio o app de bandeja) y **extrae los trabajos del servidor por cola**. Es la única forma de que el servidor en la nube alcance una impresora de la LAN privada. El agente se autentica con un token por tienda y sirve de heartbeat ("agente en línea / desconectado").
+- **`server_socket`**: el servidor imprime directamente por socket a una IP alcanzable (impresora con IP pública, o red del servidor). Es el modo para tiendas centralizadas.
+- El POS **nunca** espera a la impresora: encola y sigue. La UI muestra el estado del trabajo. Si el ticket es crítico (factura fiscal), el estado `issued` del documento no depende de la impresión: se puede reimprimir sin reemitir.
+
+**Requisito operativo**: el agente de impresión debe poder instalarse sin intervención técnica en un terminal Windows ya configurado (MSI o instalador con Inno Setup / NSIS), y sobrevivir a reinicios. Es un entregable de primera clase, no un extra.
+
+### 10.3 Proyecto verde (decisión 5): qué se congela y qué se crea
+
+| Se crea de cero | Se congela como saldo inicial | Se descarta |
+|---|---|---|
+| Esquema completo (migraciones) | Stock por tienda y producto | Todo el histórico transaccional |
+| Seed data: catálogos, **perfil fiscal venezolano**, ejemplos | Saldo y deuda por cliente/proveedor | Los contadores derivados (`bank_accounts.total_*`), que se recalculan |
+| Fixtures de demostración | Saldo de caja por cuenta y tienda | Los flags booleanos de `income_sources`/`expense_categorys` → passam a ser **tipos de movimiento** |
+| Roles y permisos de ejemplo | Correlativo fiscal: arranca en el primer número autorizado | Los `ref_no`/`invoice_id` viejos |
+
+⚠ **El punto de corte con el legacy hay que acordarlo antes de la Fase 0**: qué saldos se congelan, con qué fecha, y quién los certifica. Sin ese acuerdo, el legacy y el nuevo muestran stocks distintos el primer día y nadie sabe cuál es el bueno.
+
+### 10.4 Multi-país (requisito transversal)
+
+Ver §8.5. Regla de control: **cambiar de país = insertar filas, no tocar código**. Si aparece un `if ($country === 'VE')` en la lógica de negocio, la arquitectura se filtró y hay que parar y corregir.
+
+### 10.5 Sustitución, no convivencia (decisión 9)
+
+El legacy **no** queda como sistema-paralelo. Eso simplifica el plan (no hay doble fuente de verdad por tabla), pero exige:
+
+1. **Regla explícita de "legacy en sólo lectura"**: se apaga `DEMO`, se retiran los permisos de escritura, y se congela el acceso a los datos con una fecha announced.
+2. **Ventana de archivo**: el legacy queda accesible en sólo lectura durante 30 días para consultas legales/fiscales (Venezuela exige conservar los comprobantes emitidos un mínimo de años → el legacy debe quedar **archivado y accesible**, no simplemente borrado).
+3. **Corte limpio**: el `sync.php` del legacy se apaga **el mismo día** que se enciende el nuevo servicio de sincronización, nunca antes. Si los terminales están fuera y no pueden sincronizar, se quedan congelados: es el riesgo operativo número uno de esta fase.
+
+### 10.6 Equipo nuevo (decisión 10)
+
+El legacy no tiene CI, ni tests, ni lint, ni gestor de dependencias. Con un equipo nuevo, el proceso no es negociable:
+
+- **CI desde el primer commit**: lint, análisis estático, suite de tests, build.
+- **Suite de tests del dominio antes que la UI**: el checkout, el FIFO, los impuestos, la reserva fiscal y las cuotas se prueban sin interfaz. Es lo que permite que el equipo nuevo herede el sistema sin heredar el conocimiento tácito.
+- **Documentación viva**: el ADR (Architecture Decision Records) para cada decisión estructural, y este documento como referencia funcional.
+- **Onboarding por el mapa funcional**: §3 es el mapa de pantallas; §2.3 es el mapa del dominio. Los dos son la vía de entrada del equipo nuevo al negocio.
 
 ---
 
