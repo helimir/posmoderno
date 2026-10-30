@@ -140,9 +140,10 @@ class ModelBrand extends Model
 	    	$stores[] = $store['store_id'];
 	    }
 
-	    // Si la marca no existe en esta tienda, fetch() devuelve false y escribir
-	    // en false['stores'] dispara "Automatic conversion of false to array"
-	    // (deprecado en PHP 8.1). El resultado original se conserva explicitamente.
+	    // If the brand does not exist in this store, fetch() returns false and
+	    // writing to false['stores'] raises "Automatic conversion of false to
+	    // array" (deprecated in PHP 8.1). The original result is preserved
+	    // explicitly.
 	    if (!is_array($brand)) {
 	    	$brand = array();
 	    }

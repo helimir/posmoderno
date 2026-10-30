@@ -1,7 +1,7 @@
--- Traduccion al espanol de los datos sembrados en ingles por el proveedor
--- (categorias de gasto, fuentes de ingreso, metodos de pago, marcas,
---  unidades, cajas, impuestos y titulos de moneda) y de las claves con
--- redaccion ilegible.
+-- Spanish translation of the seed data the vendor shipped in English
+-- (expense categories, income sources, payment methods, brands,
+--  units, boxes, tax rates and currency names) and of the keys with
+-- an illegible wording.
 
 START TRANSACTION;
 

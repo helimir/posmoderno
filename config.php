@@ -3,15 +3,15 @@ define('INSTALLED', true);
 
 	/*
 	 * --------------------------------------------------------------------
-	 * VARIABLES DE ENTORNO
+	 * ENVIRONMENT VARIABLES
 	 * --------------------------------------------------------------------
 	 *
-	 * Los valores de .env (raiz del proyecto) tienen prioridad sobre los
-	 * valores por defecto de este archivo. Ver .env.example.
+	 * Values from .env (project root) take precedence over the
+	 * defaults in this file. See .env.example.
 	 *
-	 * Este archivo SE VERSIONA y no contiene ningun secreto: la clave de la
-	 * base de datos vive unicamente en .env, que esta en .gitignore. Asi un
-	 * clone nuevo arranca con solo copiar .env.example a .env.
+	 * This file IS versioned and holds no secret: the database password
+	 * lives only in .env, which is git-ignored. That way a fresh
+	 * clone boots just by copying .env.example to .env.
 	 */
 	require_once __DIR__ . '/_inc/config/env.php';
 
@@ -23,7 +23,7 @@ define('INSTALLED', true);
 'port' => env_get('DB_PORT', '3306')
 	);
 
-	// Sin DB_PASS la conexion falla con un mensaje de MySQL poco util.
+	// Without DB_PASS the connection fails with a not very helpful MySQL message.
 	if ($sql_details['pass'] === '' && getenv('DB_PASS') === false) {
 		die('Falta DB_PASS en el archivo .env de la raiz del proyecto. Copia .env.example a .env y completalo.');
 	}
@@ -74,7 +74,7 @@ define('INSTALLED', true);
 	 *
 	 * This is usefull when you will host the app inside a subdirectory of root
 	 *
-	 * Prioridad: APP_SUBDIRECTORY > path de APP_URL > 'pos_moderno'
+	 * Priority: APP_SUBDIRECTORY > APP_URL path > 'pos_moderno'
 	 */
 	$subdirectory = env_get('APP_SUBDIRECTORY', null);
 	if ($subdirectory === null) {
@@ -198,9 +198,9 @@ define('INSTALLED', true);
 	 *
 	 * If true then system will use compileted assets, i.e. minified/combined js, css and images
 	 *
-	 * Solo afecta al JS. El CSS tiene su propia bandera (USECOMPILEDCSS)
-	 * porque el bundle cssmin/main.css esta desactualizado y no lo regenera
-	 * el build: mix.styles() esta comentado en webpack.mix.js.
+	 * It only affects the JS. CSS has its own flag (USECOMPILEDCSS)
+	 * because the cssmin/main.css bundle is out of date and nothing rebuilds it:
+	 * mix.styles() is commented out in webpack.mix.js.
 	 */
 	define('USECOMPILEDASSET', env_bool('USECOMPILEDASSET', true));
 
@@ -209,10 +209,10 @@ define('INSTALLED', true);
 	 * USE COMPILED CSS
 	 * --------------------------------------------------------------------
 	 *
-	 * Si es true se sirve cssmin/main.css (bundle de 413 KB). Si es false
-	 * se sirven los CSS desde el codigo fuente, que es lo que hay que usar
-	 * para poder modificar el aspecto sin recompilar: el bundle no lo
-	 * regenera nadie y arrastra una version antigua de theme.css.
+	 * If true, cssmin/main.css is served (413 KB bundle). If false, the CSS
+	 * is served from source, which is what you need to change the look
+	 * without a rebuild: nobody regenerates the bundle and it carries an
+	 * old version of theme.css.
 	 */
 	define('USECOMPILEDCSS', env_bool('USECOMPILEDCSS', false));
 

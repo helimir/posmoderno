@@ -26,8 +26,8 @@ class Language
       	$statement->execute(array($this->lang_code));
         	$lang = $statement->fetch(PDO::FETCH_ASSOC);
         	if (!$lang) {
-        		// El codigo pedido no existe: se usa el idioma por defecto de la
-        		// aplicacion (APP_DEFAULT_LANGUAGE en el .env).
+        		// The requested code does not exist: fall back to the application
+        		// default language (APP_DEFAULT_LANGUAGE in the .env).
         		$default_code = (string) env_get('APP_DEFAULT_LANGUAGE', 'en');
         		$statement = db()->prepare("SELECT `id` FROM `languages` WHERE `code` = ?");
   	      	$statement->execute(array($default_code));

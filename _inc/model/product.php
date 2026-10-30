@@ -376,19 +376,19 @@ class ModelProduct extends Model
 		}
 
 		if (isset($data['filter_purchase_price'])) {
-			// El precio de compra vive en product_to_store, no en products.
+			// The purchase price lives in product_to_store, not in products.
 			$sql .= " AND `p2s`.`purchase_price` LIKE ?";
 			$args[] = $data['filter_purchase_price'] . '%';
 		}
 
 		if (isset($data['filter_sell_price'])) {
-			// El precio de venta vive en product_to_store, no en products.
+			// The sale price lives in product_to_store, not in products.
 			$sql .= " AND `p2s`.`sell_price` LIKE ?";
 			$args[] = $data['filter_sell_price'] . '%';
 		}
 
 		if (isset($data['filter_quantity'])) {
-			// El stock vive en product_to_store, no en products.
+			// The stock lives in product_to_store, not in products.
 			$sql .= " AND `p2s`.`quantity_in_stock` = '" . (int)$data['filter_quantity'] . "'";
 		}
 

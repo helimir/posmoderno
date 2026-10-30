@@ -712,13 +712,13 @@ function pdo_start()
 	try {
 		$db = new PDO("mysql:host={$host};port={$port};dbname={$db};charset=utf8",$user,$pass);
 		$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		// Prepara reales, igual que la clase Database: el servidor MySQL
-		// rechaza por si solo las sentencias apiladas ("...; DROP TABLE ...").
+		// Real prepares, same as the Database class: the MySQL server rejects
+		// stacked statements ("...; DROP TABLE ...") on its own.
 		$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 	}
 	catch(PDOException $e) {
-		// Se relanza en vez de die(): el mensaje de error de MySQL no debe
-		// llegar al cliente. El llamador decide que responder.
+		// Rethrown instead of die(): the MySQL error message must not reach
+		// the client. The caller decides what to answer.
 		throw $e;
 	}
 	return $db;
@@ -785,8 +785,8 @@ function updateNameValue(&$data, $key) {
 
   function get_progress_percentage($total, $substract)
   {
-  	// Un periodo sin ventas deja el total en 0 y la division revienta la
-  	// pagina entera. El porcentaje es 0 cuando no hay base de calculo.
+  	// A period with no sales leaves the total at 0 and the division takes
+  	// the whole page down. The percentage is 0 when there is no base.
   	if (!is_numeric($total) || $total <= 0) {
   		return 0;
   	}

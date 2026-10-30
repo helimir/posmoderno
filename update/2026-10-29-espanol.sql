@@ -1,7 +1,7 @@
--- Traducciones al espanol de las claves que faltaban.
--- Generado para lang_id = 7 (es). Estilo: MAYUSCULAS, sin acentos,
--- igual que las traducciones que trae el proveedor.
--- Las claves que ya tenian valor se actualizan; las que no existian se insertan.
+-- Spanish translations for the keys that were missing.
+-- Generated for lang_id = 7 (es). Style: UPPERCASE, no accents,
+-- same as the translations shipped by the vendor.
+-- Keys that already had a value are updated; the missing ones are inserted.
 
 START TRANSACTION;
 

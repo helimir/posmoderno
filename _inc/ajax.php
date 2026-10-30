@@ -1,8 +1,8 @@
 <?php
 include ("../_init.php");
 
-// Este endpoint devuelve el catalogo con precios y costos: exige sesion,
-// como el resto de los handlers de _inc/.
+// This endpoint returns the catalogue with prices and costs: it requires
+// a session, like the rest of the _inc/ handlers.
 if (!is_loggedin()) {
 	header('HTTP/1.1 422 Unprocessable Entity');
 	header('Content-Type: application/json; charset=UTF-8');
@@ -182,7 +182,7 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'UP
 if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'PURCHASEITEM') 
 {
 	$sup_id = isset($request->post['sup_id']) ? $request->post['sup_id'] : null;
-	// El cliente elige la columna de busqueda: solo se admiten columnas conocidas.
+	// The client picks the search column: only known columns are accepted.
 	$type = isset($request->post['type']) ? $request->post['type'] : 'p_name';
 	if (!in_array($type, array('p_id', 'p_name', 'p_code'), true)) {
 		echo json_encode(array('status' => 'error', 'message' => 'Invalid Action', 'for' => 'invalid'));
@@ -229,7 +229,7 @@ if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'PU
 if($request->server['REQUEST_METHOD'] == 'POST' AND $request->get['type'] == 'SELLINGITEM') 
 {
 	$sup_id = isset($request->post['sup_id']) ? $request->post['sup_id'] : null;
-	// El cliente elige la columna de busqueda: solo se admiten columnas conocidas.
+	// The client picks the search column: only known columns are accepted.
 	$type = isset($request->post['type']) ? $request->post['type'] : 'p_name';
 	if (!in_array($type, array('p_id', 'p_name', 'p_code'), true)) {
 		echo json_encode(array('status' => 'error', 'message' => 'Invalid Action', 'for' => 'invalid'));

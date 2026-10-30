@@ -2,20 +2,20 @@
 /**
  * helper/sync.php
  * ------------------------------------------------------------------
- * Autenticacion y transporte para la sincronizacion offline -> online.
+ * Authentication and transport for the offline -> online sync.
  *
- * El endpoint servidor es sync.php; el cliente es
+ * The server endpoint is sync.php; the client is
  * ModelCron::PushSqlToRemoteServer() en _inc/model/cron.php.
  *
- * AMBOS LADOS USAN ESTE ARCHIVO, de modo que la firma se calcula y se
- * verifica con exactamente el mismo codigo.
+ * BOTH SIDES USE THIS FILE, so the signature is computed and
+ * verified with exactly the same code.
  *
  * Protocolo v2 (firmado):
  *   POST sync.php
  *   {
- *     "username":  "pos-01",          // id del cliente
+ *     "username":  "pos-01",          // client id
  *     "action":    "sync",
- *     "data":      "<json con [{sql, args}]>",
+ *     "data":      "<json with [{sql, args}]>",
  *     "timestamp": 1730000000,
  *     "nonce":     "<hex aleatorio>",
  *     "signature": "<hex hmac-sha256>"
@@ -24,12 +24,12 @@
  *   canonical  = username \n action \n timestamp \n nonce \n sha256(data)
  *   signature  = hash_hmac('sha256', canonical, secret)
  *
- * Protocolo v1 (heredado, solo durante la transicion):
+ * Protocol v1 (legacy, only during the transition):
  *   { "username": "...", "password": "...", "action": "sync", "data": "..." }
  *
- * El v1 se conserva unicamente mientras SYNC_LEGACY_AUTH=true, para no
- * dejar fuera a los POS que aun no han sido actualizados. En produccion
- * hay que desactivarlo.
+ * v1 is kept only while SYNC_LEGACY_AUTH=true, so that POS
+ * terminals that have not been updated yet are not left out. In production
+ * it must be disabled.
  */
 
 // ---------------------------------------------------------------------------
@@ -38,8 +38,8 @@
 
 if (!function_exists('sync_clients')) {
     /**
-     * Mapa de clientes autorizados: id => secreto.
-     * Se configura con SYNC_CLIENTS="pos-01:secreto1,pos-02:secreto2".
+     * Map of authorized clients: id => secret.
+     * Configured with SYNC_CLIENTS="pos-01:secret1,pos-02:secret2".
      *
      * @return array
      */
@@ -67,14 +67,14 @@ if (!function_exists('sync_clients')) {
 
 if (!function_exists('sync_legacy_previous')) {
     /**
-     * Credenciales heredadas que se siguen aceptando durante la ventana de
-     * migracion, en formato "usuario:clave" separados por comas.
+     * Legacy credentials still accepted during the migration
+     * window, in "user:secret" format separated by commas.
      *
-     * Es lo que permite rotar la credencial del maestro sin dejar fuera a los
-     * POS que aun no han sido actualizados. Cuando toda la flota este
-     * migrada, se vacia esta variable y se pone SYNC_LEGACY_AUTH=false.
+     * This is what allows rotating the master credential without cutting off
+     * POS terminals that have not been updated yet. Once the whole fleet has
+     * migrated, this variable is emptied and SYNC_LEGACY_AUTH is set to false.
      *
-     * @return array usuario => clave
+     * @return array user => secret
      */
     function sync_legacy_previous()
     {
@@ -99,7 +99,7 @@ if (!function_exists('sync_legacy_previous')) {
 
 if (!function_exists('sync_config')) {
     /**
-     * Configuracion efectiva de la sincronizacion, leida del .env.
+     * Effective sync configuration, read from the .env.
      *
      * @return array
      */
@@ -142,7 +142,7 @@ if (!function_exists('sync_config')) {
 
 if (!function_exists('sync_canonical')) {
     /**
-     * Construye la cadena canonica que se firma.
+     * Builds the canonical string that gets signed.
      *
      * @return string
      */
@@ -160,7 +160,7 @@ if (!function_exists('sync_canonical')) {
 
 if (!function_exists('sync_sign')) {
     /**
-     * Firma la cadena canonica con el secreto del cliente.
+     * Signs the canonical string with the client secret.
      *
      * @return string hex
      */
@@ -183,10 +183,10 @@ if (!function_exists('sync_nonce_dir')) {
 
 if (!function_exists('sync_nonce_consume')) {
     /**
-     * Registra un nonce. Devuelve false si ya se uso (replay) o si el
-     * almacenamiento no esta disponible (fail closed).
+     * Registers a nonce. Returns false if it was already used (replay) or if
+     * storage is unavailable (fail closed).
      *
-     * @return bool true si el nonce es nuevo.
+     * @return bool true if the nonce is new.
      */
     function sync_nonce_consume($nonce, $max_age)
     {
@@ -203,7 +203,7 @@ if (!function_exists('sync_nonce_consume')) {
             return false; // fail closed: sin cache no se puede garantizar anti-replay
         }
 
-        // Limpieza de nonces vencidos.
+        // Prune expired nonces.
         $files = glob($dir . '/*.nonce');
         if ($files) {
             $expired = time() - (max(60, (int) $max_age) * 3);
@@ -214,8 +214,8 @@ if (!function_exists('sync_nonce_consume')) {
             }
         }
 
-        // fopen con modo 'x' es una creacion exclusiva y atomica: si el
-        // archivo ya existe, otro request con el mismo nonce llego antes.
+        // fopen with mode 'x' is an exclusive, atomic create: if the
+        // file already exists, another request with the same nonce got here first.
         $handle = @fopen($dir . '/' . $nonce . '.nonce', 'x');
         if ($handle === false) {
             return false;
@@ -228,14 +228,14 @@ if (!function_exists('sync_nonce_consume')) {
 }
 
 // ---------------------------------------------------------------------------
-// Verificacion (lado servidor)
+// Verification (server side)
 // ---------------------------------------------------------------------------
 
 if (!function_exists('sync_verify')) {
     /**
-     * Verifica la peticion contra la configuracion vigente.
+     * Verifies the request against the current configuration.
      *
-     * @param array $post  Cuerpo ya decodificado.
+     * @param array $post  Already decoded body.
      * @param array $cfg   Configuracion (sync_config()).
      * @return array array('ok' => bool, 'client' => string, 'reason' => string, 'mode' => string)
      */
@@ -274,8 +274,8 @@ if (!function_exists('sync_verify')) {
                 return array('ok' => false, 'reason' => 'bad_signature');
             }
 
-            // El nonce se consume solo despues de validar la firma, para que
-            // una peticion no autenticada no pueda agotar los nonces ajenos.
+            // The nonce is consumed only after the signature is validated, so that
+            // an unauthenticated request cannot exhaust other clients' nonces.
             if (!sync_nonce_consume($nonce, $cfg['max_age'])) {
                 return array('ok' => false, 'reason' => 'replayed_request');
             }
@@ -283,7 +283,7 @@ if (!function_exists('sync_verify')) {
             return array('ok' => true, 'client' => $username, 'mode' => 'signed');
         }
 
-        // --- Ruta heredada (v1), solo durante la transicion ---
+        // --- Legacy route (v1), only during the transition ---
         if (!$cfg['legacy_auth']) {
             return array('ok' => false, 'reason' => 'signature_required');
         }
@@ -300,8 +300,8 @@ if (!function_exists('sync_verify')) {
             return array('ok' => true, 'client' => $username, 'mode' => 'legacy');
         }
 
-        // Credenciales anteriores: se aceptan solo durante la ventana de
-        // migracion, configurada en SYNC_LEGACY_PREVIOUS.
+        // Previous credentials: accepted only during the migration
+        // window, configured in SYNC_LEGACY_PREVIOUS.
         if (isset($cfg['legacy_previous'][$username])
             && hash_equals($cfg['legacy_previous'][$username], $password)) {
             return array('ok' => true, 'client' => $username, 'mode' => 'legacy-previous');
@@ -312,13 +312,13 @@ if (!function_exists('sync_verify')) {
 }
 
 // ---------------------------------------------------------------------------
-// Validacion del SQL recibido
+// Validation of the received SQL
 // ---------------------------------------------------------------------------
 
 if (!function_exists('sync_sql_allowed')) {
     /**
-     * Solo se admite DML. El cliente legitimo unicamente produce
-     * INSERT, UPDATE y DELETE, porque eso es lo unico que Database::execute()
+     * Only DML is allowed. The legitimate client only produces
+     * INSERT, UPDATE and DELETE, because that is all Database::execute()
      * registra en storage/logs/sql.txt.
      *
      * @return bool
@@ -339,7 +339,7 @@ if (!function_exists('sync_sql_allowed')) {
             return false;
         }
 
-        // Ignora comentarios iniciales para detectar la palabra clave real.
+        // Ignore leading comments to detect the real keyword.
         $clean = preg_replace('/^(?:\s*\/\*.*?\*\/|\s*--[^\n]*|\s*#[^\n]*)*/s', '', $sql);
 
         if (!preg_match('/^([A-Za-z]+)/', $clean, $match)) {
@@ -356,19 +356,19 @@ if (!function_exists('sync_sql_allowed')) {
 
 if (!function_exists('sync_post')) {
     /**
-     * Envia una peticion firmada al servidor de sincronizacion.
+     * Sends a signed request to the sync server.
      *
      * @param string $url
-     * @param array  $payload  Cuerpo sin firmar (username, action, data).
+     * @param array  $payload  Unsigned body (username, action, data).
      * @param string $client_id
      * @param string $secret
-     * @return object|null Respuesta decodificada, o null si no hubo respuesta.
+     * @return object|null Decoded response, or null if there was none.
      */
     function sync_post($url, $payload, $client_id, $secret)
     {
-        // El id del cliente forma parte del canonico firmado, asi que debe
-        // viajar SIEMPRE en el cuerpo. Si se omite, el servidor no puede
-        // resolver el secreto y rechaza la peticion.
+        // The client id is part of the signed canonical string, so it must
+        // ALWAYS travel in the body. If it is omitted the server cannot
+        // resolve the secret and rejects the request.
         $payload['username'] = $client_id;
         $payload['timestamp'] = time();
         $payload['nonce'] = bin2hex(random_bytes(16));
@@ -410,12 +410,12 @@ if (!function_exists('sync_post')) {
 }
 
 // ---------------------------------------------------------------------------
-// Utilidades de respuesta
+// Response helpers
 // ---------------------------------------------------------------------------
 
 if (!function_exists('sync_respond')) {
     /**
-     * Respuesta JSON uniforme. Mantiene las claves que espera el cliente
+     * Uniform JSON response. Keeps the keys the existing client expects
      * existente: status, message, for.
      */
     function sync_respond($status, $message, $for, $http_code = 200)
@@ -435,7 +435,7 @@ if (!function_exists('sync_respond')) {
 
 if (!function_exists('sync_log')) {
     /**
-     * Log de sincronizacion en storage/logs/sync.log.
+     * Sync log at storage/logs/sync.log.
      */
     function sync_log($message)
     {
@@ -450,7 +450,7 @@ if (!function_exists('sync_log')) {
 
 if (!function_exists('sync_client_ip')) {
     /**
-     * IP del cliente (soporta proxy inverso).
+     * Client IP (supports reverse proxies).
      */
     function sync_client_ip()
     {
@@ -464,7 +464,7 @@ if (!function_exists('sync_client_ip')) {
 
 if (!function_exists('sync_is_https')) {
     /**
-     * Detecta HTTPS, incluyendo detras de un proxy inverso.
+     * Detects HTTPS, including behind a reverse proxy.
      */
     function sync_is_https()
     {

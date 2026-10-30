@@ -2,34 +2,34 @@
 /**
  * config/env.php
  * ------------------------------------------------------------------
- * Cargador de variables de entorno para POS Moderno.
+ * Environment variable loader for POS Moderno.
  *
- * Lee el archivo .env de la raiz del proyecto y deja cada variable
- * disponible mediante getenv(), $_ENV y $_SERVER.
+ * Reads the .env file from the project root and makes every variable
+ * available through getenv(), $_ENV and $_SERVER.
  *
- * Reglas de formato soportadas en .env:
- *   CLAVE=valor
- *   CLAVE="valor con espacios"
- *   CLAVE='valor literal'
- *   # comentario
+ * Supported format in .env:
+ *   KEY=value
+ *   KEY="value with spaces"
+ *   KEY='literal value'
+ *   # comment
  *
- * Las variables ya definidas en el entorno real del sistema tienen
- * prioridad (no se sobreescriben), lo que permite definir valores
- * distintos en el servidor sin tocar el archivo.
+ * Variables already defined in the real system environment take
+ * precedence (they are not overwritten), so values can differ per server
+ * without touching the file.
  */
 
-// Raiz fisica del proyecto: este archivo vive en <raiz>/_inc/config/,
-// por lo que hay que subir dos niveles (config -> _inc -> raiz).
+// Physical project root: this file lives in <root>/_inc/config/, so the
+// path has to go up two levels (config -> _inc -> root).
 if (!defined('APP_ROOT')) {
     define('APP_ROOT', dirname(dirname(__DIR__)));
 }
 
 if (!function_exists('env_load')) {
     /**
-     * Carga el archivo .env una sola vez.
+     * Loads the .env file once.
      *
-     * @param string|null $path Ruta al archivo .env. Por defecto, la raiz del proyecto.
-     * @return bool true si el archivo se leyo, false si no existe.
+     * @param string|null $path Path to the .env file. Defaults to the project root.
+     * @return bool true if the file was read, false if it does not exist.
      */
     function env_load($path = null)
     {
@@ -78,14 +78,14 @@ if (!function_exists('env_load')) {
             if (($first === '"' || $first === "'") && substr($value, -1) === $first) {
                 $value = substr($value, 1, -1);
             } else {
-                // Comentario al final de la linea sin comillas: "valor # nota"
+                // Trailing comment on an unquoted value: "value # note"
                 $hash = strpos($value, ' #');
                 if ($hash !== false) {
                     $value = rtrim(substr($value, 0, $hash));
                 }
             }
 
-            // El entorno del sistema manda
+            // The system environment wins
             if (getenv($key) === false) {
                 putenv($key . '=' . $value);
                 $_ENV[$key]    = $value;
@@ -99,10 +99,10 @@ if (!function_exists('env_load')) {
 
 if (!function_exists('env_get')) {
     /**
-     * Obtiene una variable de entorno (de .env o del sistema).
+     * Gets an environment variable (from .env or the system).
      *
-     * @param string $key     Nombre de la variable.
-     * @param mixed  $default Valor devuelto si no existe o esta vacia.
+     * @param string $key     Variable name.
+     * @param mixed  $default Returned if it does not exist or is empty.
      * @return mixed
      */
     function env_get($key, $default = null)
@@ -129,7 +129,7 @@ if (!function_exists('env_get')) {
 
 if (!function_exists('env_bool')) {
     /**
-     * Interpreta una variable de entorno como booleano.
+     * Interprets an environment variable as a boolean.
      *
      * @param string $key
      * @param bool   $default
@@ -153,7 +153,7 @@ if (!function_exists('env_bool')) {
 
 if (!function_exists('env_int')) {
     /**
-     * Interpreta una variable de entorno como entero.
+     * Interprets an environment variable as an integer.
      *
      * @param string $key
      * @param int    $default
@@ -171,5 +171,5 @@ if (!function_exists('env_int')) {
     }
 }
 
-// Carga automatica al incluir este archivo
+// Loaded automatically when this file is included
 env_load();

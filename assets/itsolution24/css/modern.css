@@ -1,22 +1,22 @@
 /*
  * modern.css
  * ------------------------------------------------------------------
- * Capa de estilos moderna sobre Bootstrap 3.3.5 y el tema AdminLTE.
+ * Modern style layer on top of Bootstrap 3.3.5 and the AdminLTE theme.
  *
- * Se carga AL FINAL del <head> en las paginas de administracion, asi que
- * gana la cascada sin necesidad de !important. No se aplica a la pantalla
- * del punto de venta (admin/pos.php), que esta afinada al pixel para
- * pantalla tactil e impresora de recibos, ni a la impresion.
+ * It is loaded at the END of the <head> in the admin pages, so it
+ * wins the cascade without needing !important. It is not applied to the
+ * point of sale screen (admin/pos.php), which is tuned to the pixel for
+ * touchscreens and receipt printers, nor to printing.
  *
- * Convencion: todos los tokens se prefijan con --m- para no colisionar con
- * los de theme.css (que solo declara tres).
+ * Convention: every token is prefixed with --m- so it does not clash with
+ * the ones in theme.css (which only declares three).
  */
 
 /* ==================================================================
    1. Tokens
    ================================================================== */
 :root {
-    /* Color de marca */
+    /* Brand color */
     --m-primary:        #2563eb;
     --m-primary-hover:  #1d4ed8;
     --m-primary-soft:   #eff6ff;
@@ -86,7 +86,7 @@ a:focus {
     color: var(--m-primary-hover);
 }
 
-/* Foco visible para navegacion por teclado */
+/* Visible focus for keyboard navigation */
 a:focus-visible,
 .btn:focus-visible,
 .form-control:focus-visible,
@@ -122,7 +122,7 @@ select:focus-visible,
     border-right: 1px solid var(--m-border);
 }
 
-/* Cada skin conserva su identidad, con tonos menos saturados */
+/* Every skin keeps its identity, with less saturated tones */
 .skin-black .main-header > .navbar { background-color: #111827; }
 .skin-black .main-header > .navbar .nav > li > a { color: #e5e7eb; }
 .skin-black .main-header > .navbar .nav > li > a:hover,
@@ -154,15 +154,15 @@ select:focus-visible,
 .skin-yellow .main-header > .navbar .nav > .active > a { background-color: var(--m-warning); color: #ffffff; }
 
 /*
- * El sidebar lo lleva el skin, no esta capa.
+ * The sidebar belongs to the skin, not to this layer.
  *
- * El fondo oscuro no lo pone .main-sidebar: lo pone el wrapper
+ * The dark background does not come from .main-sidebar: it comes from the
  * (.skin-black .wrapper, .skin-black .main-sidebar { background-color:#222d32 })
- * y .main-sidebar es transparente a proposito para que se vea el wrapper.
+ * wrapper, and .main-sidebar is transparent on purpose so the wrapper shows through.
  * Pintarlo aqui lo dejaba blanco.
  *
- * Ademas el markup del menu es .sidebar-menu, no .nav, asi que las reglas
- * de enlaces de abajo nunca habrian aplicado.
+ * Also, the menu markup is .sidebar-menu, not .nav, so the link rules
+ * below would never have applied anyway.
  */
 /* ==================================================================
    4. Cajas (tarjetas)
@@ -202,7 +202,7 @@ select:focus-visible,
     padding: 10px 16px;
 }
 
-/* Las variantes con borde de color siguen marcando su tipo */
+/* The coloured-border variants still mark their type */
 .box.box-primary    { border-top: 3px solid var(--m-primary); }
 .box.box-success    { border-top: 3px solid var(--m-success); }
 .box.box-danger     { border-top: 3px solid var(--m-danger); }
@@ -366,7 +366,7 @@ select.form-control {
     border-color: var(--m-border-strong);
     color: var(--m-text-muted);
     border-radius: var(--m-radius-sm);
-    /* Para que el addon mida lo mismo que el input que tiene al lado */
+    /* So the addon matches the height of the input next to it */
     height: 38px;
     line-height: 22px;
     padding: 7px 12px;
@@ -386,7 +386,7 @@ select.form-control {
     font-size: 12px;
 }
 
-/* Select2, alineado con los inputs */
+/* Select2, aligned with the inputs */
 .select2-container--default .select2-selection--single,
 .select2-container--default .select2-selection--multiple {
     border-color: var(--m-border-strong);

@@ -7,13 +7,13 @@ function valdateMobilePhone($number)
 // PHP 5.2 and above. built-in function by PHP provides a much more powerful sanitize capability.
 function validateString($str)
 {
-    // FILTER_SANITIZE_STRIPPED esta deprecado desde PHP 8.1. Esta es la
-    // reimplementacion equivalente: strip_tags + escapar SOLO las comillas
-    // (" -> &#34;  y  ' -> &#39;), dejando &, < y > sin tocar.
+    // FILTER_SANITIZE_STRIPPED is deprecated since PHP 8.1. This is the
+    // equivalent reimplementation: strip_tags plus escaping ONLY the quotes
+    // (" -> &#34;  and  ' -> &#39;), leaving &, < and > untouched.
     //
-    // No se usa htmlspecialchars() a proposito: el valor de entrada ya viene
-    // escapado por Request::clean() (ENT_COMPAT), y volver a escapar con
-    // htmlspecialchars() produciria doble codificacion de las entidades.
+    // htmlspecialchars() is deliberately not used: the incoming value is
+    // already escaped by Request::clean() (ENT_COMPAT), and escaping it
+    // again would double-encode the entities.
     if (is_array($str) || is_object($str)) {
         return false;
     }

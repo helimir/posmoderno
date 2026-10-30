@@ -1,19 +1,19 @@
 -- ---------------------------------------------------------------------------
--- Migracion: feature de banners
+-- Migration: banners feature
 --
--- Las tablas `banners`, `banner_to_store` y `banner_images` NO vienen en el
--- dump del proveedor (BASE DE DATOS/pos_moderno.sql) ni en las migraciones
--- v2->v3 (update-3.0.sql). Sin embargo _inc/model/banner.php las usa, y
--- admin/banner.php las lista, por lo que el modulo fallaba con
+-- The `banners`, `banner_to_store` and `banner_images` tables are NOT part of
+-- the vendor dump (BASE DE DATOS/pos_moderno.sql) nor of the migrations
+-- v2->v3 (update-3.0.sql). However _inc/model/banner.php uses them, and
+-- admin/banner.php lists them, so the module was failing with
 -- "Table 'pos_moderno.banners' doesn't exist".
 --
--- El esquema se deduce de las consultas del propio modelo:
+-- The schema is derived from the model's own queries:
 --   banners          -> INSERT (name, slug, created_at) / WHERE id / WHERE slug
 --   banner_to_store  -> banner_id, store_id, status, sort_order
 --   banner_images    -> banner_id, url, link, sort_order
 --
--- Se sigue la convencion del resto del esquema: InnoDB, utf8/utf8_unicode_ci,
--- y las tablas *_to_store con id, store_id, status y sort_order.
+-- It follows the convention of the rest of the schema: InnoDB, utf8/utf8_unicode_ci,
+-- and the *_to_store tables with id, store_id, status and sort_order.
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS `banners` (

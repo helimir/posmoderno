@@ -7,8 +7,8 @@
         $discount_amount = discount_amount(from(), to());
         $due_amount = due_amount(from(), to());
         $received_amount = sell_received_amount(from(), to());
-        // Si el periodo no tiene ventas el total es 0: sin esto, las
-        // divisiones de abajo tumban la pagina (dashboard y analiticas).
+        // If the period has no sales the total is 0: without this, the
+        // divisions below take the page down (dashboard and analytics).
         $base = $invoice_amount > 0 ? $invoice_amount : 0;
         $discount_pct = $base > 0 ? ($discount_amount / $base) * 100 : 0;
         $due_pct = $base > 0 ? ($due_amount / $base) * 100 : 0;
