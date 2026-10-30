@@ -1435,6 +1435,73 @@ El legacy no tiene CI, ni tests, ni lint, ni gestor de dependencias. Con un equi
 
 ---
 
+## 11. Fase 0 — Plan detallado (stack: Laravel 11 + Inertia + React + Tailwind)
+
+### 11.1 Objetivo
+
+Dejar un **repositorio nuevo, ejecutable y con el modelo de datos correcto**, con la capa de país/fiscal y la numeración fiscal atómica ya en el esquema, y con los tests del dominio en verde. Al final de la Fase 0 se puede crear una venta de prueba con IVA venezolano, con correlativo fiscal reservado de forma atómica, y el stock decrementado por lotes de forma transaccional.
+
+### 11.2 Prerrequisitos del entorno
+
+| Prerrequisito | Estado actual | Acción |
+|---|---|---|
+| PHP ≥ 8.2 | ✅ 8.2.12 ZTS (XAMPP) | Ninguna |
+| Composer | ✅ 2.10.2 | Ninguna |
+| Node + npm | ✅ 24.15.0 / 7.20.1 | Ninguna (el `node-sass` del legacy no aplica aquí) |
+| Docker | ✅ 29.6.2 | Levantar `postgres:17` con `docker compose` |
+| `ext-pdo_pgsql` | ❌ **deshabilitada** | Descomentar `extension=pdo_pgsql` y `extension=pgsql` en `C:\xampp\php\php.ini` (los DLL ya existen en `C:\xampp\php\ext`) |
+| `ext-intl` | ❌ deshabilitada | Descomentar `extension=intl` (Laravel lo recomienda; `number_format` por país lo necesita) |
+| `ext-sodium` | ❌ deshabilitada | Descomentar `extension=sodium` (Laravel 11 lo usa para cifrado de cookies y valores de `config`) |
+
+> Estas tres líneas son **configuración de la máquina**, no del repositorio. Se documentan en el README del proyecto nuevo para que el equipo las repita en cada entorno.
+
+### 11.3 Entregables de la Fase 0
+
+| # | Entregable | Criterio de aceptación |
+|---|---|---|
+| E1 | Repositorio nuevo con Laravel 11 + Inertia + React + Tailwind 4 + Vite | `composer install && npm run dev` levanta la app; `php artisan migrate` en verde |
+| E2 | `docker-compose.yml` con PostgreSQL 17 + Redis (cola) | `docker compose up -d` y la app conecta con `pdo_pgsql` |
+| E3 | **Esquema completo por migraciones** (el modelo destino de las 73 tablas + la capa de país/fiscal) | `migrate:fresh` limpio; FKs reales; índices en todas las columnas de filtro y de `store_id` |
+| E4 | **Numeración fiscal atómica** (`fiscal_series`, `fiscal_documents`, `fiscal_document_reservations`) | Test de concurrencia: dos reservas simultáneas obtienen números distintos y consecutivos |
+| E5 | **Seed del perfil fiscal venezolano** + catálogos + datos de ejemplo nuevos | `db:seed` deja una tienda con IVA 16%, series, roles y ejemplos limpios |
+| E6 | **Tests del dominio**: FIFO por lotes, totales e IVA, crédito de cliente, cuota con interés, transferencia entre tiendas, saldo de caja | Suite en verde; cada test nombra la regla de negocio que fija |
+| E7 | CI (lint + análisis estático + tests + build) | Badge en verde en el primer push |
+| E8 | ADRs de las decisiones estructurales (num. fiscal, capa de país, patrón de stock, agente de impresión, protocolo de sync) | `docs/adr/000N-*.md` |
+| E9 | `README` + guía de entorno | Un desarrollador nuevo levanta el proyecto siguiendo sólo el README |
+
+### 11.4 Tareas de la Fase 0
+
+```
+T01  Prerrequisitos: php.ini (pdo_pgsql, intl, sodium) + verificación
+T02  Crear repositorio + Laravel 11 + Inertia + React + Tailwind + Vite
+T03  docker-compose: postgres 17 + redis; .env de desarrollo; config de queue
+T04  Migraciones del núcleo: identidad, tiendas, catálogos maestros
+T05  Migraciones de ventas y compras (cabecera / línea / dinero)
+T06  Migraciones de stock por lotes + transferencias
+T07  Migraciones de la capa de país y fiscal + series
+T08  Migraciones de contabilidad (libro con tipos de movimiento)
+T09  Migraciones de operación: cuotas, préstamos, tarjetas, extractos, holding, quotes/orders
+T10  Migraciones de plataforma: cola, impressions, print_jobs, sync, auditoría, sesiones
+T11  Seed: perfil fiscal venezolano, catálogos, roles, tienda y ejemplos
+T12  Tests del dominio (FIFO, IVA, crédito, cuota, transferencia, numeración fiscal)
+T13  CI + ADR + README
+```
+
+### 11.5 Los tres puntos donde este diseño puede fallar
+
+1. **El saldo de apertura.** Sin histórico, el stock y los saldos iniciales hay que cargarlos a mano y **con alguien que los certifique**. Es el punto donde se cuelan los errores y donde nadie sabe luego quién metió la pata.
+2. **El motor fiscal.** Si el IVA queda hardcodeado en PHP, la fase de Latinoamérica se convierte en un fork del código. La regla es: `TaxCalculator` + tablas, y un test que falle si aparece un `if ($country === 'VE')`.
+3. **El correlativo fiscal.** Si se copia el patrón del legacy (`generate_invoice_id()`), el problema reaparece en producción con dos terminales y se descubre cuando ya hay facturas emitidas. Por eso E4 es un entregable de la Fase 0, no de la Fase 3.
+
+### 11.6 Qué NO entra en la Fase 0
+
+- Ventas, compras y POS completos (Fase 1).
+- Impresión con agente LAN (Fase 1, punto 10) — en Fase 0 sólo la tabla `print_jobs` y el modo navegador.
+- Cola de SMS y sincronización (Fase 2).
+- Los 21 reportes (Fase 3).
+
+---
+
 ## Anexo A — Verificación rápida del inventario
 
 Para revalidar cualquier dato de este documento:
