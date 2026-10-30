@@ -783,10 +783,15 @@ function updateNameValue(&$data, $key) {
   }
 }
 
-function get_progress_percentage($total, $substract)
-{
-	return 100 - (($substract / $total)*100);
-}
+  function get_progress_percentage($total, $substract)
+  {
+  	// Un periodo sin ventas deja el total en 0 y la division revienta la
+  	// pagina entera. El porcentaje es 0 cuando no hay base de calculo.
+  	if (!is_numeric($total) || $total <= 0) {
+  		return 0;
+  	}
+  	return 100 - (($substract / $total)*100);
+  }
 
 function convert_number_to_word($number) 
 {   
