@@ -12,7 +12,7 @@ Vendored PHP libs live in `_inc/vendor/`.
 
 1. Import `BASE DE DATOS/pos_moderno.sql` into a MySQL/MariaDB DB (phpMyAdmin). **There is no installer** — `install/` does not exist.
 2. Copy `.env.example` to `.env` and fill it in. `.env` is **git-ignored**; it holds the secrets.
-3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `APP_DEFAULT_LANGUAGE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
+3. `config.php` is **required** and also git-ignored. It no longer hardcodes anything meaningful — it reads every value from `.env` via `_inc/config/env.php` (`env_get()`, `env_bool()`, `env_int()`), with the old literals kept only as fallbacks. Supported keys: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`, `DB_PORT`, `APP_URL`, `APP_SUBDIRECTORY`, `APP_TIMEZONE`, `APP_DEFAULT_LANGUAGE`, `FILEMANAGERURL`, `DEMO`, `USECOMPILEDASSET`, `USECOMPILEDCSS`, `INSTALLMENT`, `HOOK`, `LOG`, `SYNCHRONIZATION`, `RTL`, `SYNCSERVERURL`.
    - `SUBDIRECTORY` is derived from the path of `APP_URL` unless `APP_SUBDIRECTORY` is set explicitly.
    - `FILEMANAGERURL` defaults to `APP_URL . '/storage/products'`.
 4. Serve over Apache/PHP (`.htaccess` sets `max_execution_time 600`; needs `AllowOverride`).
@@ -118,26 +118,36 @@ Generated output, all checked in:
 | `assets/itsolution24/angularmin/{angular,filemanager,modal}.js` | `angular/lib/**`, `angular/filemanager/js/**`, `angular/modals/*.js` |
 | `assets/itsolution24/cssmin/{main,pos,login}.css` | **NOT BUILT — see below** |
 
-### ⚠️ CSS: two layers, only one is live
+### ⚠️ CSS: two delivery modes, and the bundle is stale
 
-**`mix.styles(...)` is commented out** in `webpack.mix.js`, so the CSS bundle is never rebuilt. But the app does **not** rely on it: `admin/header.php` loads `cssmin/main.css` **first** and then loads every stylesheet again individually — including the app's own styles **straight from source**:
+`mix.styles(...)` is commented out in `webpack.mix.js`, so **the CSS bundle is never rebuilt** — `cssmin/main.css` is a frozen snapshot from whenever the vendor last built it, and it no longer matches `css/theme.css` (it still carries AdminLTE rules the current theme dropped). Editing it is pointless.
 
-| Loaded from source (edits apply immediately) | Loaded only as a bundle |
+`USECOMPILEDCSS` (in `.env`, default **false**) decides how the CSS is served:
+
+| `USECOMPILEDCSS` | What the pages load |
 |---|---|
-| `css/theme.css` (104 KB, 956 rules) | `cssmin/main.css` (413 KB) |
-| `css/main.css`, `css/responsive.css`, `css/print.css`, `css/rtl.css` | `cssmin/pos.css`, `cssmin/login.css` |
-| `css/skins/skin-*.css` (5 files, scoped by `body.skin-*`) | |
-| `css/pos/{skeleton,pos,responsive}.css` | |
-| `assets/bootstrap/css/bootstrap.min.css` | |
+| `false` (default) | every stylesheet **from source**: `theme.css`, `main.css`, `responsive.css`, `print.css`, `rtl.css`, the 5 `skins/skin-*.css`, `pos/*`, plus the vendor sheets individually |
+| `true` | only `cssmin/main.css` (413 KB, stale) |
 
-- **Editing `assets/itsolution24/css/*.css` DOES take effect** — the source files are loaded *after* the bundle, so they win the cascade. No build needed.
-- `cssmin/main.css` is effectively **dead weight**: everything in it is loaded again right after. Dropping that one `<link>` removes ~413 KB from every page load.
-- What you *cannot* change without a rebuild is the **minified vendor CSS** (`bootstrap.min.css`, `bootstrap-rtl.min.css`) — edit `bootstrap.css` and nothing happens.
+So **editing `assets/itsolution24/css/*.css` takes effect immediately, with no build**. The flag exists because the alternative is the stale bundle, not because the source needs compiling.
+
+- `USECOMPILEDASSET` is a **separate** flag and governs only the **JS**. Do not flip it to "fix" the CSS: its `else` branch loads `angularmin/angular.js` (which already contains `angularApp.js`) *and* `angular/angularApp.js`, registering the Angular module twice.
+- `admin/preview_receipt.php` loads `cssmin/main.css` unconditionally and has no individual-file fallback — it keeps the stale CSS by design (it is the print preview).
+- `admin/pos.php` does **not** load `modern.css`: the POS screen is pixel-tuned for touchscreens and receipt printers. `modern.css` is also skipped in `@media print`.
 - The POS screen (`css/pos/*`) is pixel-tuned for touchscreens and receipt printers, and `css/print.css` drives the printed receipt. Changes there need care.
 - `webpack.mix.js` lists 70 of the 101 files in `angular/modals/`. Modals missing from the bundle must be loaded with an explicit `<script>` tag — see how `admin/pos.php` loads `HoldingOrderModal.js` etc. **Editing `angular/controllers/*.js` needs no build**: they are loaded per page via `$document->addScript()`. Only `assets/itsolution24/js/*.js` and `angular/modals/*.js` are bundled.
 - `mix-manifest.json` lists only the 3 CSS files and no JS — a stale CSS-era leftover; ignore it.
 - `gulpfile.js` only has `svgstore` / `svgmstore` (SVG sprite → `assets/itsolution24/img/iconmin/`). Nothing else.
 - `package.json`'s `lint` scripts target `resources/assets/...`, a directory that **does not exist** — and `eslint`/`stylelint` are not even in `devDependencies`. `npm run lint` is broken. There is no lint or test config in the repo.
+
+### The modern layer
+
+`assets/itsolution24/css/modern.css` is the app's own visual refresh on top of Bootstrap 3.3.5 + AdminLTE. It is loaded **last** in the `<head>` so it wins the cascade without `!important`.
+
+- It defines the design tokens (prefixed `--m-`): palette, radii, shadows, focus rings. `theme.css` declares only three custom properties, so the app had no token layer before.
+- It deliberately **does not touch geometry** (widths, grid, the POS layout). Do not add layout rules there: the POS and the printed receipts are tuned to the pixel.
+- The 5 skins keep their identity but with refined tones; the active one comes from the user preference `base_color` (`skin-black` by default).
+
 
 
 
@@ -286,7 +296,7 @@ The banner tables (`banners`, `banner_to_store`, `banner_images`) were **not shi
   No-op when `DEMO = true`.
 - **Backups** — `ModelCron::DBBackup()` writes `storage/backups/mpos-backup-on-YYYY-MM-DD.txt` (excludes `users`, `user_group`, `user_to_store`), auto-prunes >30 days. `ModelCron::TableBackup()` writes per-table dumps. Restore via `admin/backup_restore.php` + `_inc/restore.php` (reads `storage/backups/bac*.*`).
 - **Maintenance mode** — create `<ROOT>/.maintenance` to trigger `maintenance.php`; delete it to resume.
-- **`.env` flags** that change runtime behavior: `DEMO`, `USECOMPILEDASSET`, `RTL`, `INSTALLMENT`, `HOOK` (activity logging), `LOG`, `SYNCHRONIZATION` (SQL log + remote push). They are read in `config.php` via `env_bool()`; the `.env` value wins over the literal fallback.
+- **`.env` flags** that change runtime behavior: `DEMO`, `USECOMPILEDASSET` (JS only), `USECOMPILEDCSS` (CSS only), `RTL`, `INSTALLMENT`, `HOOK` (activity logging), `LOG`, `SYNCHRONIZATION` (SQL log + remote push). They are read in `config.php` via `env_bool()`; the `.env` value wins over the literal fallback.
 - **Multi-store** — the active store comes from the session (`store_id`, defaults to 1); `store_select.php` switches it. Most models take `$store_id` and scope through the `*_to_store` joins — preserve that scoping when adding queries.
 
 ---

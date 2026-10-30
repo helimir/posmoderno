@@ -212,7 +212,7 @@ if ($request->server['REQUEST_METHOD'] == 'POST' && $request->get['action_type']
 
   <!-- All CSS -->
 
-  <?php if (DEMO || USECOMPILEDASSET) : ?>
+  <?php if (DEMO || USECOMPILEDCSS) : ?>
 
     <!-- LOGIN COMBINED CSS -->
     <link type="text/css" href="assets/itsolution24/cssmin/login.css" rel="stylesheet">
@@ -232,6 +232,9 @@ if ($request->server['REQUEST_METHOD'] == 'POST' && $request->get['action_type']
     <link type="text/css" href="assets/itsolution24/css/login.css" rel="stylesheet">
 
   <?php endif; ?>
+
+    <!-- Modern theme layer -->
+    <link href="assets/itsolution24/css/modern.css" type="text/css" rel="stylesheet">
 
   <!-- JS -->
   <script type="text/javascript">

@@ -48,7 +48,7 @@ $demo_text = 'This is a demo version. Data will be reset in every 6 hours interv
         <link rel="shortcut icon" href="../assets/itsolution24/img/logo-favicons/nofavicon.png">
     <?php endif; ?>
 
-    <?php if (DEMO || USECOMPILEDASSET) : ?>
+    <?php if (DEMO || USECOMPILEDCSS) : ?>
 
         <link type="text/css" href="../assets/itsolution24/cssmin/main.css" type="text/css" rel="stylesheet">
 
@@ -127,6 +127,9 @@ $demo_text = 'This is a demo version. Data will be reset in every 6 hours interv
         <link href="../assets/itsolution24/css/print.css" media="print" type="text/css" rel="stylesheet">
 
     <?php endif; ?>
+
+    <!-- Modern theme layer -->
+    <link href="../assets/itsolution24/css/modern.css" type="text/css" rel="stylesheet">
 
     <!-- Add Runtime CSS -->
     <?php foreach ($styles as $style) : ?>

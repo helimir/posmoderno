@@ -1,0 +1,591 @@
+/*
+ * modern.css
+ * ------------------------------------------------------------------
+ * Capa de estilos moderna sobre Bootstrap 3.3.5 y el tema AdminLTE.
+ *
+ * Se carga AL FINAL del <head> en las paginas de administracion, asi que
+ * gana la cascada sin necesidad de !important. No se aplica a la pantalla
+ * del punto de venta (admin/pos.php), que esta afinada al pixel para
+ * pantalla tactil e impresora de recibos, ni a la impresion.
+ *
+ * Convencion: todos los tokens se prefijan con --m- para no colisionar con
+ * los de theme.css (que solo declara tres).
+ */
+
+/* ==================================================================
+   1. Tokens
+   ================================================================== */
+:root {
+    /* Color de marca */
+    --m-primary:        #2563eb;
+    --m-primary-hover:  #1d4ed8;
+    --m-primary-soft:   #eff6ff;
+    --m-success:        #059669;
+    --m-success-hover:  #047857;
+    --m-danger:         #dc2626;
+    --m-danger-hover:   #b91c1c;
+    --m-warning:        #d97706;
+    --m-warning-hover:  #b45309;
+    --m-info:           #0891b2;
+    --m-info-hover:     #0e7490;
+
+    /* Neutros */
+    --m-text:           #1f2937;
+    --m-text-strong:    #111827;
+    --m-text-muted:     #6b7280;
+    --m-text-faint:     #9ca3af;
+    --m-border:         #e5e7eb;
+    --m-border-strong:  #d1d5db;
+    --m-surface:        #ffffff;
+    --m-surface-alt:    #f8fafc;
+    --m-bg:             #f1f5f9;
+
+    /* Formas */
+    --m-radius:         10px;
+    --m-radius-sm:      6px;
+    --m-radius-pill:    999px;
+
+    /* Sombras */
+    --m-shadow-xs:      0 1px 2px rgba(15, 23, 42, .06);
+    --m-shadow-sm:      0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px -1px rgba(15, 23, 42, .06);
+    --m-shadow:         0 1px 3px rgba(15, 23, 42, .08), 0 8px 24px -12px rgba(15, 23, 42, .18);
+    --m-shadow-lg:      0 12px 40px -12px rgba(15, 23, 42, .28);
+
+    /* Foco */
+    --m-ring:           0 0 0 3px rgba(37, 99, 235, .30);
+    --m-ring-danger:    0 0 0 3px rgba(220, 38, 38, .28);
+
+    /* Cabecera */
+    --m-header-h:       56px;
+}
+
+/* ==================================================================
+   2. Base y tipografia
+   ================================================================== */
+body {
+    background-color: var(--m-bg);
+    color: var(--m-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--m-text-strong);
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+a {
+    color: var(--m-primary);
+    transition: color .15s ease-in-out;
+}
+
+a:hover,
+a:focus {
+    color: var(--m-primary-hover);
+}
+
+/* Foco visible para navegacion por teclado */
+a:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible,
+select:focus-visible,
+.nav > li > a:focus-visible,
+.pagination > li > a:focus-visible {
+    outline: none;
+    box-shadow: var(--m-ring);
+    border-radius: var(--m-radius-sm);
+}
+
+/* ==================================================================
+   3. Cabecera y menu lateral
+   ================================================================== */
+.main-header {
+    box-shadow: none;
+    border-bottom: 1px solid var(--m-border);
+}
+
+.main-header > .navbar {
+    min-height: var(--m-header-h);
+    box-shadow: none;
+    border: 0;
+}
+
+.main-header > .navbar .navbar-toggle {
+    color: var(--m-text-muted);
+}
+
+.main-header > .navbar .navbar-brand {
+    font-weight: 700;
+    letter-spacing: -.015em;
+    border-right: 1px solid var(--m-border);
+}
+
+/* Cada skin conserva su identidad, con tonos menos saturados */
+.skin-black .main-header > .navbar { background-color: #111827; }
+.skin-black .main-header > .navbar .nav > li > a { color: #e5e7eb; }
+.skin-black .main-header > .navbar .nav > li > a:hover,
+.skin-black .main-header > .navbar .nav > li > a:focus,
+.skin-black .main-header > .navbar .nav > .active > a { background-color: #1f2937; color: #ffffff; }
+
+.skin-blue .main-header > .navbar { background-color: var(--m-primary); }
+.skin-blue .main-header > .navbar .nav > li > a { color: #ffffff; }
+.skin-blue .main-header > .navbar .nav > li > a:hover,
+.skin-blue .main-header > .navbar .nav > li > a:focus,
+.skin-blue .main-header > .navbar .nav > .active > a { background-color: var(--m-primary-hover); color: #ffffff; }
+
+.skin-green .main-header > .navbar { background-color: #065f46; }
+.skin-green .main-header > .navbar .nav > li > a { color: #ffffff; }
+.skin-green .main-header > .navbar .nav > li > a:hover,
+.skin-green .main-header > .navbar .nav > li > a:focus,
+.skin-green .main-header > .navbar .nav > .active > a { background-color: #047857; color: #ffffff; }
+
+.skin-red .main-header > .navbar { background-color: #7f1d1d; }
+.skin-red .main-header > .navbar .nav > li > a { color: #ffffff; }
+.skin-red .main-header > .navbar .nav > li > a:hover,
+.skin-red .main-header > .navbar .nav > li > a:focus,
+.skin-red .main-header > .navbar .nav > .active > a { background-color: var(--m-danger); color: #ffffff; }
+
+.skin-yellow .main-header > .navbar { background-color: #78350f; }
+.skin-yellow .main-header > .navbar .nav > li > a { color: #ffffff; }
+.skin-yellow .main-header > .navbar .nav > li > a:hover,
+.skin-yellow .main-header > .navbar .nav > li > a:focus,
+.skin-yellow .main-header > .navbar .nav > .active > a { background-color: var(--m-warning); color: #ffffff; }
+
+.main-sidebar {
+    /* No se toca el width: el tema lo gestiona con !important segun el
+       estado colapsado/expandido, y la geometria es cosa del POS. */
+    background-color: var(--m-surface);
+    border-right: 1px solid var(--m-border);
+}
+
+.main-sidebar .sidebar {
+    background-color: var(--m-surface);
+}
+
+.main-sidebar .nav > li > a {
+    color: var(--m-text);
+    border-bottom: 1px solid var(--m-border);
+}
+
+.main-sidebar .nav > li > a:hover,
+.main-sidebar .nav > li > a:focus {
+    background-color: var(--m-surface-alt);
+    color: var(--m-text-strong);
+}
+
+.main-sidebar .nav > li.active > a {
+    background-color: var(--m-primary-soft);
+    color: var(--m-primary-hover);
+    border-left: 3px solid var(--m-primary);
+}
+
+/* ==================================================================
+   4. Cajas (tarjetas)
+   ================================================================== */
+.box {
+    background: var(--m-surface);
+    border: 1px solid var(--m-border);
+    border-top: 1px solid var(--m-border);
+    border-radius: var(--m-radius);
+    box-shadow: var(--m-shadow-sm);
+    margin-bottom: 16px;
+}
+
+.box-header {
+    background: var(--m-surface);
+    color: var(--m-text-strong);
+    border-bottom: 1px solid var(--m-border);
+    padding: 12px 16px;
+    font-weight: 600;
+}
+
+.box-header h3,
+.box-header .h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.box-body {
+    padding: 16px;
+    color: var(--m-text);
+}
+
+.box-footer {
+    background: var(--m-surface-alt);
+    border-top: 1px solid var(--m-border);
+    padding: 10px 16px;
+}
+
+/* Las variantes con borde de color siguen marcando su tipo */
+.box.box-primary    { border-top: 3px solid var(--m-primary); }
+.box.box-success    { border-top: 3px solid var(--m-success); }
+.box.box-danger     { border-top: 3px solid var(--m-danger); }
+.box.box-warning    { border-top: 3px solid var(--m-warning); }
+.box.box-info       { border-top: 3px solid var(--m-info); }
+
+/* ==================================================================
+   5. Botones
+   ================================================================== */
+.btn {
+    border-radius: var(--m-radius-sm);
+    font-weight: 600;
+    border-width: 1px;
+    box-shadow: var(--m-shadow-xs);
+    transition: background-color .15s ease-in-out, border-color .15s ease-in-out, box-shadow .15s ease-in-out, transform .05s ease-in-out;
+}
+
+.btn:hover {
+    box-shadow: var(--m-shadow-sm);
+}
+
+.btn:active {
+    box-shadow: none;
+    transform: translateY(1px);
+}
+
+.btn:focus {
+    outline: none;
+    box-shadow: var(--m-ring);
+}
+
+.btn-lg {
+    border-radius: var(--m-radius);
+}
+
+.btn-sm {
+    border-radius: var(--m-radius-sm);
+}
+
+.btn-flat {
+    box-shadow: none;
+}
+
+.btn-primary {
+    background-color: var(--m-primary);
+    border-color: var(--m-primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: var(--m-primary-hover);
+    border-color: var(--m-primary-hover);
+    color: #ffffff;
+}
+
+.btn-success {
+    background-color: var(--m-success);
+    border-color: var(--m-success);
+    color: #ffffff;
+}
+
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active {
+    background-color: var(--m-success-hover);
+    border-color: var(--m-success-hover);
+    color: #ffffff;
+}
+
+.btn-danger {
+    background-color: var(--m-danger);
+    border-color: var(--m-danger);
+    color: #ffffff;
+}
+
+.btn-danger:focus {
+    outline: none;
+    box-shadow: var(--m-ring-danger);
+}
+
+.btn-danger:hover,
+.btn-danger:focus,
+.btn-danger:active {
+    background-color: var(--m-danger-hover);
+    border-color: var(--m-danger-hover);
+    color: #ffffff;
+}
+
+.btn-warning {
+    background-color: var(--m-warning);
+    border-color: var(--m-warning);
+    color: #ffffff;
+}
+
+.btn-warning:hover,
+.btn-warning:focus,
+.btn-warning:active {
+    background-color: var(--m-warning-hover);
+    border-color: var(--m-warning-hover);
+    color: #ffffff;
+}
+
+.btn-info {
+    background-color: var(--m-info);
+    border-color: var(--m-info);
+    color: #ffffff;
+}
+
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active {
+    background-color: var(--m-info-hover);
+    border-color: var(--m-info-hover);
+    color: #ffffff;
+}
+
+.btn-default {
+    background-color: var(--m-surface);
+    border-color: var(--m-border-strong);
+    color: var(--m-text);
+}
+
+.btn-default:hover,
+.btn-default:focus {
+    background-color: var(--m-surface-alt);
+    border-color: var(--m-border-strong);
+    color: var(--m-text-strong);
+}
+
+/* ==================================================================
+   6. Formularios
+   ================================================================== */
+.form-control {
+    border-radius: var(--m-radius-sm);
+    border-color: var(--m-border-strong);
+    color: var(--m-text);
+    box-shadow: none;
+    height: 38px;
+    padding: 7px 12px;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.form-control:focus {
+    border-color: var(--m-primary);
+    box-shadow: var(--m-ring);
+    outline: none;
+}
+
+.form-control::placeholder {
+    color: var(--m-text-faint);
+}
+
+select.form-control {
+    padding-right: 28px;
+}
+
+.input-group-addon {
+    background-color: var(--m-surface-alt);
+    border-color: var(--m-border-strong);
+    color: var(--m-text-muted);
+    border-radius: var(--m-radius-sm);
+    /* Para que el addon mida lo mismo que el input que tiene al lado */
+    height: 38px;
+    line-height: 22px;
+    padding: 7px 12px;
+}
+
+.input-group .form-control {
+    border-radius: var(--m-radius-sm);
+}
+
+.checkbox,
+.radio {
+    border-color: var(--m-border-strong);
+}
+
+.help-block {
+    color: var(--m-text-muted);
+    font-size: 12px;
+}
+
+/* Select2, alineado con los inputs */
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+    border-color: var(--m-border-strong);
+    border-radius: var(--m-radius-sm);
+    min-height: 38px;
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--focus .select2-selection--multiple {
+    border-color: var(--m-primary);
+    box-shadow: var(--m-ring);
+}
+
+/* ==================================================================
+   7. Tablas
+   ================================================================== */
+.table {
+    color: var(--m-text);
+    border-color: var(--m-border);
+}
+
+.table > thead > tr > th {
+    background-color: var(--m-surface-alt);
+    border-bottom: 2px solid var(--m-border);
+    color: var(--m-text-muted);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: .04em;
+}
+
+.table > tbody > tr > td {
+    border-top: 1px solid var(--m-border);
+    vertical-align: middle;
+}
+
+.table > tbody > tr:hover > td {
+    background-color: var(--m-primary-soft);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: var(--m-surface-alt);
+}
+
+.table-striped > tbody > tr:hover > td {
+    background-color: var(--m-primary-soft);
+}
+
+/* ==================================================================
+   8. Etiquetas, avisos y modales
+   ================================================================== */
+.label {
+    border-radius: var(--m-radius-pill);
+    font-weight: 600;
+    padding: 4px 9px;
+}
+
+.badge {
+    border-radius: var(--m-radius-pill);
+    font-weight: 600;
+}
+
+.alert {
+    border-radius: var(--m-radius);
+    border-width: 1px;
+    border-left-width: 4px;
+    box-shadow: var(--m-shadow-xs);
+}
+
+.modal-content {
+    border: 0;
+    border-radius: var(--m-radius);
+    box-shadow: var(--m-shadow-lg);
+}
+
+.box.box-solid {
+    box-shadow: var(--m-shadow);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--m-border);
+    padding: 16px 20px;
+}
+
+.modal-title {
+    font-weight: 600;
+    color: var(--m-text-strong);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--m-border);
+    padding: 12px 20px;
+}
+
+/* ==================================================================
+   9. Navegacion y paginacion
+   ================================================================== */
+.nav > li > a {
+    color: var(--m-text-muted);
+}
+
+.nav > li > a:hover,
+.nav > li > a:focus {
+    background-color: var(--m-surface-alt);
+    color: var(--m-text-strong);
+}
+
+.nav-tabs {
+    border-bottom: 1px solid var(--m-border);
+}
+
+.nav-tabs > li > a {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    margin-bottom: -1px;
+}
+
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+    background-color: transparent;
+    border-bottom: 2px solid var(--m-primary);
+    color: var(--m-primary-hover);
+}
+
+.pagination {
+    margin: 0;
+}
+
+.pagination > li > a,
+.pagination > li > span {
+    border: 1px solid var(--m-border);
+    border-radius: var(--m-radius-sm);
+    color: var(--m-text-muted);
+    margin: 0 2px;
+    padding: 7px 12px;
+}
+
+.pagination > li > a:hover,
+.pagination > li > a:focus {
+    background-color: var(--m-surface-alt);
+    border-color: var(--m-border-strong);
+    color: var(--m-text-strong);
+}
+
+.pagination > .active > a,
+.pagination > .active > span {
+    background-color: var(--m-primary);
+    border-color: var(--m-primary);
+    color: #ffffff;
+}
+
+/* ==================================================================
+   10. Barras de desplazamiento finas
+   ================================================================== */
+.ps__scrollbar-x-rail,
+.ps__scrollbar-y-rail {
+    background-color: transparent;
+}
+
+.ps__scrollbar-x-rail:hover,
+.ps__scrollbar-y-rail:hover {
+    background-color: var(--m-surface-alt);
+}
+
+.ps__scrollbar-thumb {
+    background-color: var(--m-border-strong);
+    border-radius: var(--m-radius-pill);
+}
+
+/* ==================================================================
+   11. Impresion: sin cambios, el recibo manda
+   ================================================================== */
+@media print {
+    .main-header,
+    .main-sidebar,
+    .box-header {
+        display: none;
+    }
+
+    .box {
+        border: 0;
+        box-shadow: none;
+    }
+}

@@ -197,8 +197,24 @@ define('INSTALLED', true);
 	 * --------------------------------------------------------------------
 	 *
 	 * If true then system will use compileted assets, i.e. minified/combined js, css and images
+	 *
+	 * Solo afecta al JS. El CSS tiene su propia bandera (USECOMPILEDCSS)
+	 * porque el bundle cssmin/main.css esta desactualizado y no lo regenera
+	 * el build: mix.styles() esta comentado en webpack.mix.js.
 	 */
 	define('USECOMPILEDASSET', env_bool('USECOMPILEDASSET', true));
+
+	/*
+	 * --------------------------------------------------------------------
+	 * USE COMPILED CSS
+	 * --------------------------------------------------------------------
+	 *
+	 * Si es true se sirve cssmin/main.css (bundle de 413 KB). Si es false
+	 * se sirven los CSS desde el codigo fuente, que es lo que hay que usar
+	 * para poder modificar el aspecto sin recompilar: el bundle no lo
+	 * regenera nadie y arrastra una version antigua de theme.css.
+	 */
+	define('USECOMPILEDCSS', env_bool('USECOMPILEDCSS', false));
 
 	/*
 	 * --------------------------------------------------------------------

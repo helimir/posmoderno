@@ -56,7 +56,7 @@ if ($order_printer_ids) {
 
 	<!-- ALL CSS -->
 
-	<?php if (DEMO || USECOMPILEDASSET) : ?>
+	<?php if (DEMO || USECOMPILEDCSS) : ?>
 
 		<link href="../assets/itsolution24/cssmin/pos.css" type="text/css" rel="stylesheet">
 
