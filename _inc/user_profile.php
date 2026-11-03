@@ -32,8 +32,10 @@ $store_id = store_id();
 $Hooks->do_action('Before_Showing_User_Profile');
 
 $where_query = "selling_info.store_id = {$store_id}";
-if ($user_id=$request->get['user_id']) {
-  $where_query .= "  AND selling_info.created_by = {$user_id}";
+if (isset($request->get['user_id']) && $request->get['user_id']) {
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $user_id = (int)$request->get['user_id'];
+  $where_query .= "  AND selling_info.created_by = " . $user_id;
 }
 
 if (isset($request->get['type']) && ($request->get['type'] != 'undefined') && $request->get['type'] != '') {

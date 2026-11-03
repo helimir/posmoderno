@@ -370,8 +370,9 @@ if (from()) {
   $where_query .= date_range_accounting_filter($from, $to);
 }
 if (isset($request->get['account_id']) && $request->get['account_id'] != 'null') {
-  $account_id = $request->get['account_id'];
-  $where_query .= " AND bank_transaction_info.account_id = $account_id";
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $account_id = (int)$request->get['account_id'];
+  $where_query .= " AND bank_transaction_info.account_id = " . $account_id;
 }
 // DB table to use
 $table = "(SELECT bank_transaction_info.*, bank_transaction_price.price_id, bank_transaction_price.amount 

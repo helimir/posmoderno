@@ -45,7 +45,9 @@ $Hooks->do_action('Before_Showing_Transactions_List');
 
 $where_query = "1=1";
 if (isset($request->get['customer_id']) && $request->get['customer_id'] != 'null') {
-  $where_query .= " AND customer_transactions.customer_id=".$request->get['customer_id'];
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $customer_id = (int)$request->get['customer_id'];
+  $where_query .= " AND customer_transactions.customer_id=" . $customer_id;
 }
 
 if (from()) {

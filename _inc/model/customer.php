@@ -68,7 +68,13 @@ class ModelCustomer extends Model
 			    	$statement = $this->db->prepare("INSERT INTO `customer_to_store` SET `customer_id` = ?, `store_id` = ?");
 					$statement->execute(array((int)$customer_id, (int)$store_id));
 			    }
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store
@@ -265,8 +271,11 @@ class ModelCustomer extends Model
 	public function getRecentCustomers($limit, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
 
-		$statement = $this->db->prepare("SELECT customers.* FROM `selling_info` 
+		$statement = $this->db->prepare("SELECT customers.* FROM `selling_info`
 			LEFT JOIN `customers` ON (`selling_info`.`customer_id` = `customers`.`customer_id`) 
 			LEFT JOIN `customer_to_store` as c2s ON (`selling_info`.`customer_id` = `c2s`.`customer_id`)
 			where `selling_info`.`store_id` = ? AND `c2s`.`status` = ?
@@ -339,7 +348,7 @@ class ModelCustomer extends Model
 	public function totalToday($store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`c2s`.`store_id` = '$store_id'";
+		$where_query = "`c2s`.`store_id` = ?";
 		$from = date('Y-m-d');
 		$to = date('Y-m-d');
 		if (($from && ($to == false)) || ($from == $to)) {
@@ -356,7 +365,7 @@ class ModelCustomer extends Model
 		}
 
 		$statement = $this->db->prepare("SELECT * FROM `customers` LEFT JOIN `customer_to_store` c2s ON (`customers`.`customer_id` = `c2s`.`customer_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 
 		return $statement->rowCount();
 	}
@@ -364,7 +373,7 @@ class ModelCustomer extends Model
 	public function total($from, $to, $store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`c2s`.`store_id` = '$store_id'";
+		$where_query = "`c2s`.`store_id` = ?";
 		if ($from) {
 			$from = $from ? $from : date('Y-m-d');
 			$to = $to ? $to : date('Y-m-d');
@@ -382,7 +391,7 @@ class ModelCustomer extends Model
 			}
 		}
 		$statement = $this->db->prepare("SELECT * FROM `customers` LEFT JOIN `customer_to_store` c2s ON (`customers`.`customer_id` = `c2s`.`customer_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 

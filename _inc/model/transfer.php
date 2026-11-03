@@ -17,7 +17,10 @@ class ModelTransfer extends Model
 	public function getTransfers($store_id = null, $limit = 100000) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$statement = $this->db->prepare("SELECT * FROM `transfers` 
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000000));
+		$statement = $this->db->prepare("SELECT * FROM `transfers`
 			WHERE (`transfers`.`from_store_id` = ? OR `transfers`.`to_store_id` = ?) ORDER BY `transfers`.`created_at` DESC LIMIT $limit");
 		$statement->execute(array($store_id, $store_id));
 		return $statement->fetchAll(PDO::FETCH_ASSOC);

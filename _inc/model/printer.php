@@ -96,7 +96,13 @@ class ModelPrinter extends Model
 					$statement->execute(array($printer_id, $store_id));
 			    }
 
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store
@@ -221,7 +227,9 @@ class ModelPrinter extends Model
 				$data['limit'] = 20;
 			}
 
-			$sql .= " LIMIT " . $data['start'] . "," . $data['limit'];
+			// El limite se castea antes de interpolarse: MySQL no admite un
+			// placeholder en LIMIT.
+			$sql .= " LIMIT " . (int)$data['start'] . "," . (int)$data['limit'];
 		}
 
 		$statement = $this->db->prepare($sql);

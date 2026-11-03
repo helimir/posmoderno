@@ -17,7 +17,10 @@ class ModelPurchasereturn extends Model
 	public function getInvoices($store_id = null, $limit = 100000) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$statement = $this->db->prepare("SELECT `purchase_returns`.* FROM `purchase_returns` 
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000000));
+		$statement = $this->db->prepare("SELECT `purchase_returns`.* FROM `purchase_returns`
 			WHERE `purchase_returns`.`store_id` = ? ORDER BY `purchase_returns`.`created_at` DESC LIMIT $limit");
 		$statement->execute(array($store_id));
 		return $statement->fetchAll(PDO::FETCH_ASSOC);

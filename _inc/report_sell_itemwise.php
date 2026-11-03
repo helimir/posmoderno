@@ -32,7 +32,9 @@ $store_id = store_id();
 
 $where_query = "selling_info.inv_type != 'due_paid' AND selling_info.store_id = '{$store_id}'";
 if (isset($request->get['pid']) && $request->get['pid'] && $request->get['pid'] != 'null') {
-  $where_query .= " AND item_id = " . $request->get['pid'];
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $pid = (int)$request->get['pid'];
+  $where_query .= " AND item_id = " . $pid;
 }
 $from = from();
 $to = to();

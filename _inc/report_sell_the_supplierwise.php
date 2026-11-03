@@ -31,8 +31,10 @@ $store_id = store_id();
  */
 
 $where_query = "selling_info.store_id = '$store_id'";
-if ($request->get['supid']) {
-  $where_query .= " AND sup_id = " . $request->get['supid'];
+if (isset($request->get['supid']) && $request->get['supid']) {
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $supid = (int)$request->get['supid'];
+  $where_query .= " AND sup_id = " . $supid;
 }
 if (from()) {
   $from = from();

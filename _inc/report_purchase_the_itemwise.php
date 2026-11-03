@@ -28,8 +28,10 @@ if (user_group_id() != 1 && !has_permission('access', 'read_purchase_report')) {
  */
 
 $where_query = "purchase_info.inv_type != 'expense' AND purchase_item.store_id = " . store_id();
-if ($request->get['pid']) {
-  $where_query .= " AND item_id = " . $request->get['pid'];
+if (isset($request->get['pid']) && $request->get['pid']) {
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $pid = (int)$request->get['pid'];
+  $where_query .= " AND item_id = " . $pid;
 }
 if (from()) {
   $from = from();

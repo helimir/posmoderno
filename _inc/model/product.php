@@ -188,7 +188,13 @@ class ModelProduct extends Model
 					$statement->execute(array($data['sup_id'], $data['brand_id'], $data['box_id'], $data['taxrate_id'], $data['tax_method'], $preference, $data['purchase_price'], $data['sell_price'], $data['e_date'], $data['alert_quantity'], $store_id, $product_id));
 			    }
 
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store
@@ -556,7 +562,7 @@ class ModelProduct extends Model
 	public function totalToday($store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`p2s`.`store_id` = {$store_id} AND `p2s`.`status` = 1";
+		$where_query = "`p2s`.`store_id` = ? AND `p2s`.`status` = 1";
 		$from = date('Y-m-d');
 		$to = date('Y-m-d');
 		if (($from && ($to == false)) || ($from == $to)) {
@@ -567,12 +573,12 @@ class ModelProduct extends Model
 			$where_query .= " AND MONTH(`p2s`.`p_date`) = $month";
 			$where_query .= " AND YEAR(`p2s`.`p_date`) = $year";
 		} else {
-			$from = date('Y-m-d H:i:s', strtotime($from.' '. '00:00:00')); 
+			$from = date('Y-m-d H:i:s', strtotime($from.' '. '00:00:00'));
 			$to = date('Y-m-d H:i:s', strtotime($to.' '. '23:59:59'));
 			$where_query .= " AND `p2s`.`p_date` >= '{$from}' AND `p2s`.`p_date` <= '{$to}'";
 		}
 		$statement = $this->db->prepare("SELECT * FROM `products` LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`) WHERE {$where_query}");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		
 		return $statement->rowCount();
 	}
@@ -580,7 +586,7 @@ class ModelProduct extends Model
 	public function total($from, $to, $store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`p2s`.`store_id` = {$store_id} AND `p2s`.`status` = 1";
+		$where_query = "`p2s`.`store_id` = ? AND `p2s`.`status` = 1";
 		if ($from) {
 			$from = $from ? $from : date('Y-m-d');
 			$to = $to ? $to : date('Y-m-d');
@@ -598,12 +604,12 @@ class ModelProduct extends Model
 			}
 		}
 		$statement = $this->db->prepare("SELECT * FROM `products` LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`) WHERE {$where_query}");
-		$statement->execute(array());
-		
+		$statement->execute(array($store_id));
+
 		return $statement->rowCount();
 	}
 
-	public function totalTrash($store_id = null) 
+	public function totalTrash($store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
 

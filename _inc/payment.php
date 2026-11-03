@@ -87,11 +87,11 @@ if (isset($request->get['action_type']) && $request->get['action_type'] == 'ORDE
   }
   $order = array();
   $items = array();
-  $where_query = "`selling_info`.`store_id` = ? AND `selling_info`.`invoice_id` = '{$invoice_id}'";
+  $where_query = "`selling_info`.`store_id` = ? AND `selling_info`.`invoice_id` = ?";
   $statement = db()->prepare("SELECT * FROM `selling_info` 
         LEFT JOIN `selling_price` ON (`selling_price`.`invoice_id` = `selling_info`.`invoice_id`)
         WHERE $where_query");
-  $statement->execute(array(store_id()));
+  $statement->execute(array(store_id(), $invoice_id));
   $order = $statement->fetch(PDO::FETCH_ASSOC);
   
   $invoice_model = registry()->get('loader')->model('invoice');

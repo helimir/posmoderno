@@ -77,7 +77,13 @@ class ModelBanner extends Model
 			    	$statement = $this->db->prepare("INSERT INTO `banner_to_store` SET `banner_id` = ?, `store_id` = ?");
 					$statement->execute(array((int)$id, (int)$store_id));
 			    }
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 			if (!empty($store_ids)) {
 				$statement = $this->db->prepare("SELECT * FROM `banner_to_store` WHERE `store_id` NOT IN (" . implode(',', $store_ids) . ")");

@@ -29,8 +29,9 @@ if (user_group_id() != 1 && !has_permission('access', 'read_user_log')) {
 
 $Hooks->do_action('Before_Showing_User_Log');
 
-$user_id = $request->get['user_id'];
-$where_query = "user_id = '{$user_id}'";
+// El id viene del request: se castea a entero antes de interpolarse.
+$user_id = (int)$request->get['user_id'];
+$where_query = "user_id = " . $user_id;
 
 // DB table to use
 $table = "(SELECT login_logs.* FROM login_logs WHERE $where_query) as login_logs";

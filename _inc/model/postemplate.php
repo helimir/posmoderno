@@ -68,7 +68,13 @@ class ModelPostemplate extends Model
 					$statement->execute(array((int)$template_id, (int)$store_id));
 			    }
 
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store

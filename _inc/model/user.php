@@ -185,7 +185,10 @@ class ModelUser extends Model
 	public function getRecentUsers($limit, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$statement = $this->db->prepare("SELECT users.* FROM `selling_info` 
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
+		$statement = $this->db->prepare("SELECT users.* FROM `selling_info`
 			LEFT JOIN `users` ON (`selling_info`.`created_by` = `users`.`id`) 
 			LEFT JOIN `user_to_store` as u2s ON (`selling_info`.`created_by` = `u2s`.`user_id`)
 			where `selling_info`.`store_id` = ? AND `u2s`.`status` = ?
@@ -237,7 +240,7 @@ class ModelUser extends Model
 	public function totalToday($store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`u2s`.`store_id` = '$store_id'";
+		$where_query = "`u2s`.`store_id` = ?";
 		$from = date('Y-m-d');
 		$to = date('Y-m-d');
 		if (($from && ($to == false)) || ($from == $to)) {
@@ -254,7 +257,7 @@ class ModelUser extends Model
 		}
 
 		$statement = $this->db->prepare("SELECT * FROM `users` LEFT JOIN `user_to_store` u2s ON (`users`.`id` = `u2s`.`user_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 
 		return $statement->rowCount();
 	}
@@ -262,7 +265,7 @@ class ModelUser extends Model
 	public function total($from, $to, $store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`u2s`.`store_id` = '$store_id'";
+		$where_query = "`u2s`.`store_id` = ?";
 		if ($from) {
 			$from = $from ? $from : date('Y-m-d');
 			$to = $to ? $to : date('Y-m-d');
@@ -280,7 +283,7 @@ class ModelUser extends Model
 			}
 		}
 		$statement = $this->db->prepare("SELECT * FROM `users` LEFT JOIN `user_to_store` u2s ON (`users`.`id` = `u2s`.`user_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 

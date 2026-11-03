@@ -45,7 +45,9 @@ $Hooks->do_action('Before_Showing_Purchase_Transactions_List');
 
 $where_query = "store_id = {$store_id}";
 if (isset($request->get['sup_id']) && $request->get['sup_id'] != 'null') {
-  $where_query .= " AND purchase_logs.sup_id=".$request->get['sup_id'];
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $sup_id = (int)$request->get['sup_id'];
+  $where_query .= " AND purchase_logs.sup_id=" . $sup_id;
 }
 
 if (from()) {

@@ -17,7 +17,10 @@ class ModelPurchase extends Model
 	public function getInvoices($type, $store_id = null, $limit = 100000) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$statement = $this->db->prepare("SELECT `purchase_info`.*, `purchase_price`.*, `suppliers`.`sup_id`, `suppliers`.`sup_name`, `suppliers`.`sup_mobile`, `suppliers`.`sup_email` FROM `purchase_info` 
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000000));
+		$statement = $this->db->prepare("SELECT `purchase_info`.*, `purchase_price`.*, `suppliers`.`sup_id`, `suppliers`.`sup_name`, `suppliers`.`sup_mobile`, `suppliers`.`sup_email` FROM `purchase_info`
 			LEFT JOIN `purchase_price` ON `purchase_info`.`invoice_id` = `purchase_price`.`invoice_id` 
 			LEFT JOIN `suppliers` ON `purchase_info`.`sup_id` = `suppliers`.`sup_id` 
 			WHERE `purchase_info`.`store_id` = ? AND `purchase_info`.`inv_type` = ? ORDER BY `purchase_info`.`created_at` DESC LIMIT $limit");

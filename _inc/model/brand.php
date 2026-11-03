@@ -61,7 +61,13 @@ class ModelBrand extends Model
 			    	$statement = $this->db->prepare("INSERT INTO `brand_to_store` SET `brand_id` = ?, `store_id` = ?");
 					$statement->execute(array((int)$brand_id, (int)$store_id));
 			    }
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store
@@ -268,7 +274,7 @@ class ModelBrand extends Model
 	public function totalToday($store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`b2s`.`store_id` = {$store_id} AND `b2s`.`status` = 1";
+		$where_query = "`b2s`.`store_id` = ? AND `b2s`.`status` = 1";
 		$from = date('Y-m-d');
 		$to = date('Y-m-d');
 		if (($from && ($to == false)) || ($from == $to)) {
@@ -284,14 +290,14 @@ class ModelBrand extends Model
 			$where_query .= " AND brands.created_at >= '{$from}' AND brands.created_at <= '{$to}'";
 		}
 		$statement = $this->db->prepare("SELECT * FROM `brands` LEFT JOIN `brand_to_store` b2s ON (`brands`.`brand_id` = `b2s`.`brand_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 
 	public function total($from, $to, $store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`b2s`.`store_id` = {$store_id} AND `b2s`.`status` = 1";
+		$where_query = "`b2s`.`store_id` = ? AND `b2s`.`status` = 1";
 		if ($from) {
 			$from = $from ? $from : date('Y-m-d');
 			$to = $to ? $to : date('Y-m-d');
@@ -309,7 +315,7 @@ class ModelBrand extends Model
 			}
 		}
 		$statement = $this->db->prepare("SELECT * FROM `brands` LEFT JOIN `brand_to_store` b2s ON (`brands`.`brand_id` = `b2s`.`brand_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 }

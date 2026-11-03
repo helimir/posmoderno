@@ -270,20 +270,32 @@ surfaces on screen.
     concurrent receipt/quotation rendering races. `admin/error_log` and
     `storage/logs/*.txt` are runtime logs, not source.
 
-### 🔴 Live SQL injection — do not copy this code
+### SQL injection — the pattern, and why it is not optional
 
-The listing filters and the POS autocomplete in `_inc/ajax.php` were fixed (placeholders
-+ allowlists). **The same bug is still live elsewhere**:
+`Request::clean()` escapes with `ENT_COMPAT`, so **a single quote is NOT escaped**: a
+quote-based payload really does break out of the string. Every request-derived value
+that reaches a statement must be handled this way:
 
-- `_inc/pos.php:67` — `UPPER($field) LIKE '" . strtoupper($query_string) . "%'` with both
-  `$field` and `$query_string` taken straight from the request.
-- `_inc/model/product.php:481,486` — same pattern in the product search.
-- Plus concatenation in `_inc/banking.php:374`, `_inc/customer_transaction.php:48`,
-  `_inc/bank_transfer.php:47-53`, `_inc/invoice.php:434`, `_inc/customer.php:110,313`,
-  `_inc/supplier.php:245`, `admin/reset.php:67` (this one also mass-deletes).
+- **Values** → `?` placeholder, bound in the `execute(array(...))` call, in the exact
+  order the placeholders appear.
+- **Identifiers** (column and table names) → never interpolated: validate against a
+  **whitelist** with `safe_column($allowed, $value, $default)`
+  (`_inc/helper/common.php`), then interpolate the validated result.
+- **`LIMIT`/`OFFSET`** → MySQL accepts no placeholder there: cast **and** bound
+  (`max(1, min((int)$x, 1000))`) before interpolating.
+- **Lists of ids** (`NOT IN (...)`) → accept only positive integers; a hostile entry is
+  discarded, so the statement degrades to a no-op instead of executing.
 
-Any authenticated user can reach these. Fix with `?` placeholders + an allowlist for
-identifiers; never concatenate a request-derived value into SQL.
+The 2026-11 sweep fixed 42 files: the POS search, the DataTables `WHERE` clauses, the
+balance and stock `UPDATE`s, the report filters, `admin/reset.php` (which mass-deleted
+31 of 31 rows) and the `LIMIT`s that were interpolated from `extract($data)` without a
+cast. Verified against the live database: a hostile payload used to **corrupt a customer
+balance silently** (697 → 1.0000) and to **mass-delete** on `reset.php`; both now leave
+the data untouched.
+
+Still to watch: the `date_range_*` helpers in `_inc/helper/common.php` rebuild their
+`DAY()/MONTH()/YEAR()` values with `date()`, so they are digits-only — but they are
+interpolated, and a future change there would reopen the hole.
 
 ## Synchronization (offline → online)
 

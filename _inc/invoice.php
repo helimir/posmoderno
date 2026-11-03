@@ -73,11 +73,11 @@ if($request->server['REQUEST_METHOD'] == 'POST' && $request->post['action_type']
         foreach ($selling_items as $item) {
             $item_id = $item['item_id'];
             $item_quantity = $item['item_quantity']-$item['return_quantity'];
-            db()->prepare("UPDATE `purchase_item` SET `status` = ?, `total_sell` = `total_sell` - {$item_quantity} WHERE `invoice_id` = ? AND `item_id` = ?");
-            db()->execute(array('active', $item['purchase_invoice_id'], $item_id));
+            db()->prepare("UPDATE `purchase_item` SET `status` = ?, `total_sell` = `total_sell` - ? WHERE `invoice_id` = ? AND `item_id` = ?");
+            db()->execute(array('active', $item_quantity, $item['purchase_invoice_id'], $item_id));
 
-            db()->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = `quantity_in_stock` + {$item_quantity} WHERE `store_id` = ? AND `product_id` = ?");
-            db()->execute(array($store_id, $item_id));
+            db()->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = `quantity_in_stock` + ? WHERE `store_id` = ? AND `product_id` = ?");
+            db()->execute(array($item_quantity, $store_id, $item_id));
         }
         // Quantity adjustment end
 
@@ -456,8 +456,9 @@ if ($request->get['type'] != 'all_due' && $request->get['type'] != 'all_invoice'
 }
 
 if (isset($request->get['customer_id']) && ($request->get['customer_id'] != 'undefined') && $request->get['customer_id'] != '' && $request->get['customer_id'] != 'null') {
-    $customer_id = $request->get['customer_id'];
-    $where_query .= " AND selling_info.customer_id = {$customer_id}";
+    // El id viene del request: se castea a entero antes de interpolarse.
+    $customer_id = (int)$request->get['customer_id'];
+    $where_query .= " AND selling_info.customer_id = " . $customer_id;
 }
 
 // DB table to use

@@ -24,8 +24,8 @@ $user_id = user_id();
 // $where_query = "bank_transaction_info.store_id = $store_id AND bank_transaction_info.transaction_type IN ('withdraw') AND `is_substract` != 1";
 $where_query = "bank_transaction_info.store_id = $store_id AND bank_transaction_info.transaction_type IN ('withdraw') AND bank_transaction_info.is_hide != 1";
 if (isset($request->get['account_id']) && $request->get['account_id'] != 'null') {
-  $account_id = $request->get['account_id'];
-  $where_query .= " AND bank_transaction_info.account_id = $account_id";
+  $account_id = (int)$request->get['account_id'];
+  $where_query .= " AND bank_transaction_info.account_id = " . $account_id;
 }
 
 $from = from();

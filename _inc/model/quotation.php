@@ -208,18 +208,23 @@ class ModelQuotation extends Model
         return $reference_no;
     }
 
-    public function getQuotations($store_id = null, $limit = 100000, $customer_id = null) 
+    public function getQuotations($store_id = null, $limit = 100000, $customer_id = null)
     {
         $store_id = $store_id ? $store_id : store_id();
-        $where_query = "`quotation_info`.`store_id` = {$store_id}";
+        $where_query = "`quotation_info`.`store_id` = ?";
+        $args = array($store_id);
         if ($customer_id) {
-            $where_query .= " AND `quotation_info`.`customer_id` = {$customer_id}";
+            $where_query .= " AND `quotation_info`.`customer_id` = ?";
+            $args[] = (int)$customer_id;
         }
-        $statement = $this->db->prepare("SELECT `quotation_info`.*, `quotation_price`.*, `customers`.`customer_id`, `customers`.`customer_name`, `customers`.`customer_mobile`, `customers`.`customer_email` FROM `quotation_info` 
-            LEFT JOIN `quotation_price` ON `quotation_info`.`reference_no` = `quotation_price`.`reference_no` 
-            LEFT JOIN `customers` ON `quotation_info`.`customer_id` = `customers`.`customer_id` 
+        // El limite se acota y se castea antes de interpolarse: MySQL no admite
+        // un placeholder en LIMIT.
+        $limit = max(1, min((int)$limit, 1000000));
+        $statement = $this->db->prepare("SELECT `quotation_info`.*, `quotation_price`.*, `customers`.`customer_id`, `customers`.`customer_name`, `customers`.`customer_mobile`, `customers`.`customer_email` FROM `quotation_info`
+            LEFT JOIN `quotation_price` ON `quotation_info`.`reference_no` = `quotation_price`.`reference_no`
+            LEFT JOIN `customers` ON `quotation_info`.`customer_id` = `customers`.`customer_id`
             WHERE {$where_query} ORDER BY `quotation_info`.`created_at` DESC LIMIT $limit");
-        $statement->execute(array());
+        $statement->execute($args);
         return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 

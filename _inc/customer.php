@@ -107,8 +107,8 @@ function add_customer_balance($customer_id, $amount, $pmethod_id,  $notes='')
   $statement = db()->prepare("INSERT INTO `customer_transactions` SET `type` = ?, `reference_no` = ?, `customer_id` = ?, `store_id` = ?, `pmethod_id` = ?, `notes` = ?, `amount` = ?, `balance` = ?, `created_by` = ?, `created_at` = ?");
   $statement->execute(array('add_balance', $reference_no, $customer_id, store_id(), $pmethod_id, $notes, $amount, $balance+$amount, user_id(), date_time()));
 
-  $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` + {$amount} WHERE `store_id` = ? AND `customer_id` = ?");
-  $statement->execute(array(store_id(), $customer_id));
+  $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` + ? WHERE `store_id` = ? AND `customer_id` = ?");
+  $statement->execute(array($amount, store_id(), $customer_id));
 }
 
 // Create customer
@@ -310,8 +310,8 @@ if ($request->server['REQUEST_METHOD'] == 'POST' AND isset($request->post['actio
     $statement = db()->prepare("INSERT INTO `customer_transactions` SET `type` = ?, `reference_no` = ?, `customer_id` = ?, `store_id` = ?, `notes` = ?, `amount` = ?, `balance` = ?, `created_by` = ?, `created_at` = ?");
     $statement->execute(array('substract_balance', $reference_no, $customer_id, $store_id, $notes, $amount, $balance-$amount, $user_id, date_time()));
 
-    $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - {$amount} WHERE `store_id` = ? AND `customer_id` = ?");
-    $statement->execute(array($store_id, $customer_id));
+    $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - ? WHERE `store_id` = ? AND `customer_id` = ?");
+    $statement->execute(array($amount, $store_id, $customer_id));
 
     header('Content-Type: application/json');
     echo json_encode(array('msg' => trans('text_balance_substracted'), 'id' => $customer_id, 'amount' => $amount, 'balance' => currency_format(get_customer_balance($customer_id))));

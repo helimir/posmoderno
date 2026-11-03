@@ -61,68 +61,72 @@ if (isset($action) && $action == 'reset')
 			if ($type == 'all') {
 				$store_id = $store_id['store_id'];
 			}
+			// El id de tienda puede venir del POST: se castea a entero antes de usarlo.
+			$store_id = (int)$store_id;
+			// Lista blanca de tablas: el nombre NUNCA viene del request, se valida
+			// contra esta lista antes de interpolarse como identificador.
 			$tables = array('purchase_info','purchase_item','purchase_payments','purchase_price','purchase_returns','purchase_return_items','customer_transactions','sell_logs','purchase_logs','payments','returns','return_items','selling_info','selling_item','selling_price','quotation_info','quotation_item','quotation_price', 'holding_info','holding_item','holding_price','transfer_items','expenses','bank_transaction_info','bank_transaction_price','sms_schedule','pos_register', 'purchase_logs', 'installment_payments', 'installment_orders');
 			for ($i=0; $i < count($tables); $i++) { 
-			  $table = $tables[$i];
-			  $s1 = db()->prepare("DELETE FROM `{$table}` WHERE `store_id` = '{$store_id}'");
-			  $s1->execute(array());
+			  $table = safe_column($tables, $tables[$i], $tables[0]);
+			  $s1 = db()->prepare("DELETE FROM `$table` WHERE `store_id` = ?");
+			  $s1->execute(array($store_id));
 			}
 
-			$s1 = db()->prepare("DELETE FROM `transfers` WHERE `from_store_id` = '{$store_id}' OR `to_store_id` = '{$store_id}'");
-	  		$s1->execute(array());
+			$s1 = db()->prepare("DELETE FROM `transfers` WHERE `from_store_id` = ? OR `to_store_id` = ?");
+  			$s1->execute(array($store_id, $store_id));
 
-	  		$s1 = db()->prepare("DELETE FROM `transfer_items` WHERE `store_id` = '{$store_id}'");
-	  		$s1->execute(array());
+  			$s1 = db()->prepare("DELETE FROM `transfer_items` WHERE `store_id` = ?");
+  			$s1->execute(array($store_id));
 
 			$s1 = db()->prepare("DELETE FROM `login_logs`");
 			$s1->execute(array());
 
-			$s1 = db()->prepare("SELECT `customer_id` FROM `customer_to_store` WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("SELECT `customer_id` FROM `customer_to_store` WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 			$customers = $s1->fetchAll(PDO::FETCH_ASSOC);
 			if ($customers) {
 				foreach ($customers as $customer) {
 					$customer_id = $customer['customer_id'];
-					$s1 = db()->prepare("UPDATE `customers` SET `is_giftcard` = 0 WHERE `customer_id` = '{$customer_id}'");
-					$s1->execute(array());
+					$s1 = db()->prepare("UPDATE `customers` SET `is_giftcard` = 0 WHERE `customer_id` = ?");
+					$s1->execute(array($customer_id));
 
-					$s1 = db()->prepare("SELECT `card_no` FROM `gift_cards` WHERE `customer_id` = '{$customer_id}'");
-					$s1->execute(array());
+					$s1 = db()->prepare("SELECT `card_no` FROM `gift_cards` WHERE `customer_id` = ?");
+					$s1->execute(array($customer_id));
 					$cards = $s1->fetchAll(PDO::FETCH_ASSOC);
 					if ($cards) {
 						foreach ($cards as $card) {
 							$card_id = $card['card_no'];
-							$s1 = db()->prepare("DELETE FROM `gift_card_topups` WHERE `card_id` = '{$card_id}'");
-			  				$s1->execute(array());
+							$s1 = db()->prepare("DELETE FROM `gift_card_topups` WHERE `card_id` = ?");
+			  	            	$s1->execute(array($card_id));
 						}
 					}
-					$s1 = db()->prepare("DELETE FROM `gift_cards` WHERE `customer_id` = '{$customer_id}'");
-			  		$s1->execute(array());
+					$s1 = db()->prepare("DELETE FROM `gift_cards` WHERE `customer_id` = ?");
+			  		$s1->execute(array($customer_id));
 				}
 			}
 
-			$s1 = db()->prepare("UPDATE `customer_to_store` SET `balance` = 0, `due` = 0 WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("UPDATE `customer_to_store` SET `balance` = 0, `due` = 0 WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 
-			$s1 = db()->prepare("UPDATE `supplier_to_store` SET `balance` = 0 WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("UPDATE `supplier_to_store` SET `balance` = 0 WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 
 
-			$s1 = db()->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = 0 WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = 0 WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 
-			$s1 = db()->prepare("SELECT `account_id` FROM `bank_account_to_store` WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("SELECT `account_id` FROM `bank_account_to_store` WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 			$accounts = $s1->fetchAll(PDO::FETCH_ASSOC);
 			if ($accounts) {
 				foreach ($accounts as $account) {
 					$id = $account['account_id'];
-					$s1 = db()->prepare("UPDATE `bank_accounts` SET `total_deposit` = 0,  `total_withdraw` = 0,  `total_transfer_from_other` = 0,  `total_transfer_to_other` = 0 WHERE `id` = '{$id}'");
-					$s1->execute(array());
+					$s1 = db()->prepare("UPDATE `bank_accounts` SET `total_deposit` = 0,  `total_withdraw` = 0,  `total_transfer_from_other` = 0,  `total_transfer_to_other` = 0 WHERE `id` = ?");
+					$s1->execute(array($id));
 				}
 			}
-			$s1 = db()->prepare("UPDATE `bank_account_to_store` SET `deposit` = 0,  `withdraw` = 0,  `transfer_from_other` = 0,  `transfer_to_other` = 0 WHERE `store_id` = '{$store_id}'");
-			$s1->execute(array());
+			$s1 = db()->prepare("UPDATE `bank_account_to_store` SET `deposit` = 0,  `withdraw` = 0,  `transfer_from_other` = 0,  `transfer_to_other` = 0 WHERE `store_id` = ?");
+			$s1->execute(array($store_id));
 		}
 		if (!is_cli()) {
 			redirect(root_url() . '/admin/reset.php?action=done');

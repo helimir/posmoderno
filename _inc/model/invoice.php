@@ -259,8 +259,8 @@ class ModelInvoice extends Model
                     $quantity_exist = 0;
                 }
 
-                $statement = $this->db->prepare("UPDATE `purchase_item` SET `total_sell` = `total_sell` + {$sell_quantity} WHERE `store_id` = ? AND `item_id` = ? AND `status` = ?");
-                $statement->execute(array($store_id, $product_id, 'active'));
+                $statement = $this->db->prepare("UPDATE `purchase_item` SET `total_sell` = `total_sell` + ? WHERE `store_id` = ? AND `item_id` = ? AND `status` = ?");
+                $statement->execute(array($sell_quantity, $store_id, $product_id, 'active'));
                 $statement = $this->db->prepare("SELECT * FROM `purchase_item` WHERE `store_id` = ? AND `item_id` = ? AND `status` = ?");
                 $statement->execute(array($store_id, $product_id, 'active'));
                 $purchase_item = $statement->fetch(PDO::FETCH_ASSOC);
@@ -291,8 +291,8 @@ class ModelInvoice extends Model
             }
             $statement = $this->db->prepare("INSERT INTO `selling_item` (invoice_id, store_id, item_id, category_id, brand_id, sup_id, item_name, item_purchase_price, item_price, item_discount, item_tax, tax_method, taxrate_id, tax, gst, cgst, sgst, igst, item_quantity, item_total, purchase_invoice_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $statement->execute(array($invoice_id, $store_id, $product_id, $category_id, $brand_id, $sup_id, $product_name, $item_purchase_price, $product_price, $product_discount, $tax, $tax_method, $taxrate_id, $taxrate, $taxrate, $cgst, $sgst, $igst, $product_quantity, $product_total, $purchase_invoice_id));
-            $statement = $this->db->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = `quantity_in_stock` - {$quantity_substract} WHERE `store_id` = ? AND `product_id` = ?");
-            $statement->execute(array($store_id, $product_id));
+            $statement = $this->db->prepare("UPDATE `product_to_store` SET `quantity_in_stock` = `quantity_in_stock` - ? WHERE `store_id` = ? AND `product_id` = ?");
+            $statement->execute(array($quantity_substract, $store_id, $product_id));
         }
 
         if (get_the_customer($customer_id, 'customer_state') == get_preference('business_state')) {
@@ -319,8 +319,8 @@ class ModelInvoice extends Model
         }
 
         if ($pmethod_code == 'credit' && $paid_amount > 0) {
-            $statement = $this->db->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - {$paid_amount} WHERE `store_id` = ? AND `customer_id` = ?");
-            $statement->execute(array($store_id, $customer_id));
+            $statement = $this->db->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - ? WHERE `store_id` = ? AND `customer_id` = ?");
+            $statement->execute(array($paid_amount, $store_id, $customer_id));
 
             $customer_balance = get_customer_balance($customer_id);
             $reference_no = generate_customer_transacton_ref_no('substract');
@@ -333,13 +333,13 @@ class ModelInvoice extends Model
         $statement->execute(array($customer_id, $reference_no, 'sell', $pmethod_id,  'Paid while selling', $paid_amount, $store_id, $invoice_id, $user_id, $created_at));
         
         if ($due > 0) {
-            $statement = $this->db->prepare("UPDATE `customer_to_store` SET `due` = `due` + {$due}  WHERE `store_id` = ? AND `customer_id` = ?");
-            $statement->execute(array($store_id, $customer_id));
+            $statement = $this->db->prepare("UPDATE `customer_to_store` SET `due` = `due` + ?  WHERE `store_id` = ? AND `customer_id` = ?");
+            $statement->execute(array($due, $store_id, $customer_id));
         }
 
         if ($is_card_payments && $card_no) {
-            $statement = $this->db->prepare("UPDATE `gift_cards` SET `balance` = `balance` - {$paid_amount}  WHERE `card_no` = ?");
-            $statement->execute(array($card_no));
+            $statement = $this->db->prepare("UPDATE `gift_cards` SET `balance` = `balance` - ?  WHERE `card_no` = ?");
+            $statement->execute(array($paid_amount, $card_no));
         }
         
         if (($account_id = store('deposit_account_id')) && $paid_amount > 0) {
@@ -361,10 +361,10 @@ class ModelInvoice extends Model
 			$statement = $this->db->prepare("INSERT INTO `bank_transaction_price` (store_id, info_id, ref_no, amount) VALUES (?, ?, ?, ?)");
             $statement->execute(array($store_id, $info_id, $ref_no, $deposit_amount));
             
-            $statement = $this->db->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + {$deposit_amount} WHERE `store_id` = ? AND `account_id` = ?");
-            $statement->execute(array($store_id, $account_id));
-            $statement = $this->db->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + {$deposit_amount} WHERE `id` = ?");
-            $statement->execute(array($account_id));
+            $statement = $this->db->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + ? WHERE `store_id` = ? AND `account_id` = ?");
+            $statement->execute(array($deposit_amount, $store_id, $account_id));
+            $statement = $this->db->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + ? WHERE `id` = ?");
+            $statement->execute(array($deposit_amount, $account_id));
         }
 
         if ($qref) {
@@ -458,8 +458,8 @@ class ModelInvoice extends Model
 
         // Credit Payment
         if ($pmethod_code == 'credit') {
-            $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - {$paid_amount} WHERE `store_id` = ? AND `customer_id` = ?");
-            $statement->execute(array($store_id, $customer_id));
+            $statement = db()->prepare("UPDATE `customer_to_store` SET `balance` = `balance` - ? WHERE `store_id` = ? AND `customer_id` = ?");
+            $statement->execute(array($paid_amount, $store_id, $customer_id));
         }
 
         $partial_shipping_charge = ($invoice_price['shipping_amount'] / $invoice_price['payable_amount']) * $paid_amount;
@@ -494,13 +494,13 @@ class ModelInvoice extends Model
         }
 
         // Update customer due
-        $statement = db()->prepare("UPDATE `customer_to_store` SET `due` = `due` - {$paid_amount}  WHERE `store_id` = ? AND `customer_id` = ?");
-        $statement->execute(array($store_id, $customer_id));
+        $statement = db()->prepare("UPDATE `customer_to_store` SET `due` = `due` - ?  WHERE `store_id` = ? AND `customer_id` = ?");
+        $statement->execute(array($paid_amount, $store_id, $customer_id));
 
         // Decrease card balance
         if ($paid_amount > 0 && $is_card_payments && $card_no) {
-            $statement = db()->prepare("UPDATE `gift_cards` SET `balance` = `balance` - $paid_amount  WHERE `card_no` = ?");
-            $statement->execute(array($card_no));
+          $statement = db()->prepare("UPDATE `gift_cards` SET `balance` = `balance` - ?  WHERE `card_no` = ?");
+          $statement->execute(array($paid_amount, $card_no));
         }
 
         // Add customer transaction
@@ -531,11 +531,11 @@ class ModelInvoice extends Model
           $statement = db()->prepare("INSERT INTO `bank_transaction_price` (store_id, info_id, ref_no, amount) VALUES (?, ?, ?, ?)");
           $statement->execute(array($store_id, $info_id, $ref_no, $deposit_amount));
 
-          $statement = db()->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + $deposit_amount WHERE `store_id` = ? AND `account_id` = ?");
-          $statement->execute(array($store_id, $account_id));
+          $statement = db()->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + ? WHERE `store_id` = ? AND `account_id` = ?");
+          $statement->execute(array($deposit_amount, $store_id, $account_id));
 
-          $statement = db()->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + $deposit_amount WHERE `id` = ?");
-          $statement->execute(array($account_id));
+          $statement = db()->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + ? WHERE `id` = ?");
+          $statement->execute(array($deposit_amount, $account_id));
         }
 
         if ($paid_amount > 0) {
@@ -563,6 +563,9 @@ class ModelInvoice extends Model
     public function getInvoices($type, $store_id = null, $limit = 100000)
     {
         $store_id = $store_id ? $store_id : store_id();
+        // El limite se acota y se castea antes de interpolarse: MySQL no admite
+        // un placeholder en LIMIT.
+        $limit = max(1, min((int)$limit, 1000000));
         $statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.*, `customers`.`customer_id`, `customers`.`customer_name`, `customers`.`customer_mobile`, `customers`.`customer_email` FROM `selling_info` LEFT JOIN `selling_price` ON `selling_info`.`invoice_id` = `selling_price`.`invoice_id` LEFT JOIN `customers` ON `selling_info`.`customer_id` = `customers`.`customer_id` WHERE `selling_info`.`store_id` = ? AND `selling_info`.`inv_type` = ? ORDER BY `selling_info`.`created_at` DESC LIMIT {$limit}");
         $statement->execute(array($store_id, $type));
         return $statement->fetchAll(PDO::FETCH_ASSOC);

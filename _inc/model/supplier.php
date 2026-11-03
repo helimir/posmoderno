@@ -74,7 +74,13 @@ class ModelSupplier extends Model
 					$statement->execute(array((int)$sup_id, (int)$store_id));
 			    }
 
-			    $store_ids[] = $store_id;
+			    // El id de tienda viene del POST: se castea a entero y solo se
+			    // aceptan ids validos, para que la lista NOT IN (...) que se
+			    // interpola como texto no pueda ser manipulada.
+			    $store_id_int = (int)$store_id;
+			    if ($store_id_int > 0) {
+			    	$store_ids[] = $store_id_int;
+			    }
 			}
 
 			// Delete unwanted store
@@ -295,7 +301,7 @@ class ModelSupplier extends Model
 	public function totalToday($store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`s2s`.`store_id` = {$store_id} AND `s2s`.`status` = 1";
+		$where_query = "`s2s`.`store_id` = ? AND `s2s`.`status` = 1";
 		$from = date('Y-m-d');
 		$to = date('Y-m-d');
 		if (($from && ($to == false)) || ($from == $to)) {
@@ -311,14 +317,14 @@ class ModelSupplier extends Model
 			$where_query .= " AND suppliers.created_at >= '{$from}' AND suppliers.created_at <= '{$to}'";
 		}
 		$statement = $this->db->prepare("SELECT * FROM `suppliers` LEFT JOIN `supplier_to_store` s2s ON (`suppliers`.`sup_id` = `s2s`.`sup_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 
 	public function total($from, $to, $store_id = null) 
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`s2s`.`store_id` = {$store_id} AND `s2s`.`status` = 1";
+		$where_query = "`s2s`.`store_id` = ? AND `s2s`.`status` = 1";
 		if ($from) {
 			$from = $from ? $from : date('Y-m-d');
 			$to = $to ? $to : date('Y-m-d');
@@ -336,7 +342,7 @@ class ModelSupplier extends Model
 			}
 		}
 		$statement = $this->db->prepare("SELECT * FROM `suppliers` LEFT JOIN `supplier_to_store` s2s ON (`suppliers`.`sup_id` = `s2s`.`sup_id`) WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		return $statement->rowCount();
 	}
 }

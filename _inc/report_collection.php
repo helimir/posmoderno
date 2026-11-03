@@ -31,8 +31,9 @@ if (user_group_id() != 1 && !has_permission('access', 'read_full_collection_repo
 }
 
 if (isset($request->get['user_id']) && ($request->get['user_id'] != 'undefined') && $request->get['user_id'] != '' && $request->get['user_id'] != 'null') {
-  $id = $request->get['user_id'];
-  $where_query .= " AND selling_info.created_by = {$id}";
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $id = (int)$request->get['user_id'];
+  $where_query .= " AND selling_info.created_by = " . $id;
 }
 
 $from = from();

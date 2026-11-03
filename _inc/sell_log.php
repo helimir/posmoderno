@@ -45,7 +45,9 @@ $Hooks->do_action('Before_Showing_Sell_Log_List');
 
 $where_query = "store_id = {$store_id}";
 if (isset($request->get['customer_id']) && $request->get['customer_id'] != 'null') {
-  $where_query .= " AND sell_logs.customer_id=".$request->get['customer_id'];
+  // El id viene del request: se castea a entero antes de interpolarse.
+  $customer_id = (int)$request->get['customer_id'];
+  $where_query .= " AND sell_logs.customer_id=" . $customer_id;
 }
 
 if (from()) {

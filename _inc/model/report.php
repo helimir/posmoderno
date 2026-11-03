@@ -14,16 +14,23 @@
 */
 class ModelReport extends Model 
 {
-	public function getTax($type, $from, $to, $store_id = null) 
+	public function getTax($type, $from, $to, $store_id = null)
 	{
 		$tax = 0;
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`selling_info`.`store_id` = '$store_id'";
+		// La columna se valida contra una lista blanca: un identificador no se
+		// parameteriza, se valida.
+		$type = safe_column(
+			array('subtotal', 'discount_amount', 'interest_amount', 'interest_percentage', 'item_tax', 'order_tax', 'cgst', 'sgst', 'igst', 'total_purchase_price', 'shipping_amount', 'others_charge', 'payable_amount', 'paid_amount', 'due', 'due_paid', 'return_amount', 'balance', 'profit', 'previous_due', 'prev_due_paid'),
+			$type,
+			'order_tax'
+		);
+		$where_query = "`selling_info`.`store_id` = ?";
 		$where_query .= date_range_filter($from, $to);
-		$statement = $this->db->prepare("SELECT SUM(`selling_price`.`{$type}`) as total FROM `selling_info` 
-		LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+		$statement = $this->db->prepare("SELECT SUM(`selling_price`.`{$type}`) as total FROM `selling_info`
+		LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 		WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 		if ($invoice) {
 			$tax = $invoice['total'];
@@ -31,29 +38,36 @@ class ModelReport extends Model
 		return $tax ? $tax : 0;
 	}
 
-	public function getInOrExclusiveTax($type, $from, $to, $store_id = null) 
+	public function getInOrExclusiveTax($type, $from, $to, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`selling_info`.`store_id` = $store_id AND `selling_item`.`tax_method` = '{$type}'";
+		$where_query = "`selling_info`.`store_id` = ? AND `selling_item`.`tax_method` = ?";
 		$where_query .= date_range_filter($from, $to);
-		$statement = $this->db->prepare("SELECT SUM(`selling_item`.`item_tax`) as total FROM `selling_info` 
-			LEFT JOIN `selling_item` ON (`selling_info`.`invoice_id` = `selling_item`.`invoice_id`) 
+		$statement = $this->db->prepare("SELECT SUM(`selling_item`.`item_tax`) as total FROM `selling_info`
+			LEFT JOIN `selling_item` ON (`selling_info`.`invoice_id` = `selling_item`.`invoice_id`)
 			WHERE $where_query GROUP BY `selling_info`.`invoice_id`");
-		$statement->execute(array());
+		$statement->execute(array($store_id, $type));
 		$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 		return isset($invoice['total']) ? $invoice['total'] : 0;
 	}
 
-	public function getPurchaseTax($type, $from, $to, $store_id = null) 
+	public function getPurchaseTax($type, $from, $to, $store_id = null)
 	{
 		$tax = 0;
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`purchase_info`.`store_id` = '$store_id'";
+		// La columna se valida contra una lista blanca: un identificador no se
+		// parameteriza, se valida.
+		$type = safe_column(
+			array('subtotal', 'discount_amount', 'shipping_amount', 'others_charge', 'item_tax', 'order_tax', 'cgst', 'sgst', 'igst', 'payable_amount', 'paid_amount', 'due_paid', 'due', 'return_amount', 'balance'),
+			$type,
+			'order_tax'
+		);
+		$where_query = "`purchase_info`.`store_id` = ?";
 		$where_query .= date_range_filter2($from, $to);
-		$statement = $this->db->prepare("SELECT SUM(`purchase_price`.`{$type}`) as total FROM `purchase_info` 
-		LEFT JOIN `purchase_price` ON (`purchase_info`.`invoice_id` = `purchase_price`.`invoice_id`) 
+		$statement = $this->db->prepare("SELECT SUM(`purchase_price`.`{$type}`) as total FROM `purchase_info`
+		LEFT JOIN `purchase_price` ON (`purchase_info`.`invoice_id` = `purchase_price`.`invoice_id`)
 		WHERE $where_query");
-		$statement->execute(array());
+		$statement->execute(array($store_id));
 		$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 		if ($invoice) {
 			$tax = $invoice['total'];
@@ -61,16 +75,16 @@ class ModelReport extends Model
 		return $tax ? $tax : 0;
 	}
 
-	public function getInOrExclusivePurchaseTax($type, $from, $to, $store_id = null) 
+	public function getInOrExclusivePurchaseTax($type, $from, $to, $store_id = null)
 	{
 		$tax = 0;
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`purchase_info`.`store_id` = $store_id AND `purchase_item`.`tax_method` = '{$type}'";
+		$where_query = "`purchase_info`.`store_id` = ? AND `purchase_item`.`tax_method` = ?";
 		$where_query .= date_range_filter2($from, $to);
-		$statement = $this->db->prepare("SELECT SUM(`purchase_item`.`item_tax`) as total FROM `purchase_info` 
-			LEFT JOIN `purchase_item` ON (`purchase_info`.`invoice_id` = `purchase_item`.`invoice_id`) 
+		$statement = $this->db->prepare("SELECT SUM(`purchase_item`.`item_tax`) as total FROM `purchase_info`
+			LEFT JOIN `purchase_item` ON (`purchase_info`.`invoice_id` = `purchase_item`.`invoice_id`)
 			WHERE $where_query GROUP BY `purchase_info`.`invoice_id`");
-		$statement->execute(array());
+		$statement->execute(array($store_id, $type));
 		$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 		if ($invoice) {
 			$tax = $invoice['total'];
@@ -443,6 +457,9 @@ class ModelReport extends Model
 	public function getTopProducts($from, $to, $limit = 3, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
 		$where_query = "`selling_info`.`store_id` = '$store_id'";
 		$where_query .= date_range_filter($from, $to);
 		$statement = $this->db->prepare("SELECT `selling_info`.`store_id`, `selling_info`.`created_at`, `selling_item`.`item_name`, SUM(`selling_item`.`item_quantity`) as quantity FROM `selling_info` 
@@ -457,6 +474,9 @@ class ModelReport extends Model
 	public function getTopCustomers($from, $to, $limit = 3, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
 		$where_query = "`selling_info`.`store_id` = '$store_id'";
 		$where_query .= date_range_filter($from, $to);
 		$statement = $this->db->prepare("SELECT SUM(`selling_price`.`payable_amount`) AS total, `selling_info`.`store_id`, `selling_info`.`created_at`, `selling_info`.`customer_id` FROM `selling_info` 
@@ -471,6 +491,9 @@ class ModelReport extends Model
 	public function getTopSuppliers($from, $to, $limit = 3, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
 		$where_query = "`selling_info`.`store_id` = '$store_id' AND `selling_item`.`sup_id` IS NOT NULL AND `selling_item`.`sup_id` != '0'";
 		$where_query .= date_range_filter($from, $to);
 		$statement = $this->db->prepare("SELECT `selling_info`.`store_id`, `selling_info`.`created_at`, `selling_item`.`sup_id`, SUM(`selling_item`.`item_quantity`) as quantity FROM `selling_info`
@@ -485,6 +508,9 @@ class ModelReport extends Model
 	public function getTopBrands($from, $to, $limit = 3, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000));
 		$where_query = "`selling_info`.`store_id` = '$store_id' AND `selling_item`.`brand_id` IS NOT NULL AND `selling_item`.`sup_id` != '0'";
 		$where_query .= date_range_filter($from, $to);
 		$statement = $this->db->prepare("SELECT `selling_info`.`store_id`, `selling_info`.*, `selling_item`.`brand_id`, SUM(`selling_item`.`item_quantity`) as quantity FROM `selling_info` 
@@ -517,10 +543,10 @@ class ModelReport extends Model
 	public function userTotalInvoiceCount($user_id = null, $from = null, $to = null, $store_id = null)
 	{
 		$store_id = $store_id ? $store_id : store_id();
-		$where_query = "`selling_info`.`store_id` = ? AND `selling_info`.`status` = 1 AND `created_by` = $user_id AND `inv_type` = 'sell'";
+		$where_query = "`selling_info`.`store_id` = ? AND `selling_info`.`status` = 1 AND `created_by` = ? AND `inv_type` = 'sell'";
 		$where_query .= date_range_filter($from, $to);
 		$statement = $this->db->prepare("SELECT * FROM `selling_info` WHERE $where_query");
-		$statement->execute(array($store_id));
+		$statement->execute(array($store_id, $user_id));
 		return $statement->rowCount();
 	}
 
@@ -529,13 +555,13 @@ class ModelReport extends Model
 		$store_id = $store_id ? $store_id : store_id();
 		$where_query = "`selling_info`.`store_id` = '$store_id'";
 		if ($day) {
-		  $where_query .= " AND DAY(`selling_info`.`created_at`) = $day";
+		  $where_query .= " AND DAY(`selling_info`.`created_at`) = " . (int)$day;
 		}
 		if ($month) {
-		  $where_query .= " AND MONTH(`selling_info`.`created_at`) = $month";
+		  $where_query .= " AND MONTH(`selling_info`.`created_at`) = " . (int)$month;
 		}
 		if ($year) {
-		  $where_query .= " AND YEAR(`selling_info`.`created_at`) = $year";
+		  $where_query .= " AND YEAR(`selling_info`.`created_at`) = " . (int)$year;
 		}
 
 		$statement = $this->db->prepare("SELECT SUM(`selling_price`.`order_tax`) as total FROM `selling_info` 
@@ -554,26 +580,26 @@ class ModelReport extends Model
 		$where_query .= date_range_filter($from, $to);
 		switch ($type) {
 			case 'userwise':
-				$where_query .= " AND `selling_info`.`inv_type` = 'sell' AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`paid_amount`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`inv_type` = 'sell' AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`paid_amount`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				$prev_due_collection = $this->getTotalPrevDueCollectionBy($type_id, $from, $to);
 				$total = $total+$prev_due_collection;
 				break;
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`inv_type` = 'sell' AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`paid_amount`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`inv_type` = 'sell' AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`paid_amount`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				break;
-		}	
+		}
 		return $total;
 	}
 
@@ -585,24 +611,24 @@ class ModelReport extends Model
 		$where_query .= date_range_filter($from, $to);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`due`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`due`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				break;
 			case 'userwise':
-				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`due`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`due`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				break;
-		}	
+		}
 		return $total + $edited_invoice_amount;
 	}
 
@@ -640,23 +666,26 @@ class ModelReport extends Model
 		$store_id = $store_id ? $store_id : store_id();
 		$where_query = "`selling_info`.`inv_type` = 'sell' AND `selling_info`.`store_id` = ? AND `selling_info`.`status` = 1";
 		$where_query .= date_range_filter($from, $to);
+		$args = array($store_id);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`order_tax` as order_tax, `selling_price`.`item_tax` as item_tax 
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`order_tax` as order_tax, `selling_price`.`item_tax` as item_tax
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
+				$args[] = $type_id;
 				break;
 			case 'userwise':
-				$where_query .= " AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`order_tax` as order_tax, `selling_price`.`item_tax` as item_tax 
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`order_tax` as order_tax, `selling_price`.`item_tax` as item_tax
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
-				break;		
+				$args[] = $type_id;
+				break;
 		}
-		$statement->execute(array($store_id));
+		$statement->execute($args);
 		$invoices = $statement->fetchAll(PDO::FETCH_ASSOC);
 		foreach ($invoices as $inv) {
 			$total += $inv['order_tax'] + $inv['item_tax'];
@@ -670,23 +699,26 @@ class ModelReport extends Model
 		$store_id = $store_id ? $store_id : store_id();
 		$where_query = "`selling_info`.`inv_type` = 'sell' AND `selling_info`.`store_id` = ? AND `selling_info`.`status` = 1";
 		$where_query .= date_range_filter($from, $to);
+		$args = array($store_id);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`shipping_amount` as shipping_charge 
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`shipping_amount` as shipping_charge
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
+				$args[] = $type_id;
 				break;
 			case 'userwise':
-				$where_query .= " AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`shipping_amount` as shipping_charge  
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`shipping_amount` as shipping_charge
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
-				break;		
+				$args[] = $type_id;
+				break;
 		}
-		$statement->execute(array($store_id));
+		$statement->execute($args);
 		$invoices = $statement->fetchAll(PDO::FETCH_ASSOC);
 		foreach ($invoices as $inv) {
 			$total += $inv['shipping_charge'];
@@ -700,23 +732,26 @@ class ModelReport extends Model
 		$store_id = $store_id ? $store_id : store_id();
 		$where_query = "`selling_info`.`inv_type` = 'sell' AND `selling_info`.`store_id` = ? AND `selling_info`.`status` = 1";
 		$where_query .= date_range_filter($from, $to);
+		$args = array($store_id);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`others_charge` as others_charge 
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`others_charge` as others_charge
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
+				$args[] = $type_id;
 				break;
 			case 'userwise':
-				$where_query .= " AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`others_charge` as others_charge  
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`others_charge` as others_charge
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
-				break;		
+				$args[] = $type_id;
+				break;
 		}
-		$statement->execute(array($store_id));
+		$statement->execute($args);
 		$invoices = $statement->fetchAll(PDO::FETCH_ASSOC);
 		foreach ($invoices as $inv) {
 			$total += $inv['others_charge'];
@@ -730,30 +765,34 @@ class ModelReport extends Model
 		$store_id = $store_id ? $store_id : store_id();
 		$where_query = "`selling_info`.`inv_type` = 'sell' AND `selling_info`.`store_id` = ? AND `selling_info`.`status` = 1";
 		$where_query .= date_range_filter($from, $to);
+		$args = array($store_id);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount 
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
+				$args[] = $type_id;
 				break;
 			case 'userwise':
-				$where_query .= " AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount  
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
-				break;	
+				$args[] = $type_id;
+				break;
 			case 'itemwise':
-				$where_query .= " AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount  
-				FROM `selling_info` 
-				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT `selling_info`.*, `selling_price`.`discount_amount` as discount_amount
+				FROM `selling_info`
+				LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 				WHERE $where_query");
-				break;	
+				$args[] = $type_id;
+				break;
 		}
-		$statement->execute(array($store_id));
+		$statement->execute($args);
 		$invoices = $statement->fetchAll(PDO::FETCH_ASSOC);
 		foreach ($invoices as $inv) {
 			$total += $inv['discount_amount'];
@@ -808,24 +847,24 @@ class ModelReport extends Model
 		$where_query .= date_range_filter($from, $to);
 		switch ($type) {
 			case 'invoicewise':
-				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`invoice_id` = '$type_id'";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`subtotal`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`invoice_id` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`subtotal`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				break;
 			case 'userwise':
-				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`created_by` = $type_id";
-				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`subtotal`) as total FROM `selling_info` 
-					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`) 
+				$where_query .= " AND `inv_type` = 'sell' AND `selling_info`.`created_by` = ?";
+				$statement = $this->db->prepare("SELECT SUM(`selling_price`.`subtotal`) as total FROM `selling_info`
+					LEFT JOIN `selling_price` ON (`selling_info`.`invoice_id` = `selling_price`.`invoice_id`)
 					WHERE $where_query");
-				$statement->execute(array($store_id));
+				$statement->execute(array($store_id, $type_id));
 				$invoice = $statement->fetch(PDO::FETCH_ASSOC);
 				$total = isset($invoice['total']) ? (float)$invoice['total'] : 0;
 				break;
-		}	
+		}
 		return $total;
 	}
 }

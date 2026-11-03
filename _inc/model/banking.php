@@ -35,11 +35,11 @@ class ModelBanking extends Model
 	    $statement = $this->db->prepare("INSERT INTO `bank_transaction_price` (store_id, info_id, ref_no, amount) VALUES (?, ?, ?, ?)");
 	    $statement->execute(array($store_id, $info_id, $ref_no, $deposit_amount));
 
-	    $statement = $this->db->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + $deposit_amount WHERE `store_id` = ? AND `account_id` = ?");
-	    $statement->execute(array($store_id, $account_id));
+	    $statement = $this->db->prepare("UPDATE `bank_account_to_store` SET `deposit` = `deposit` + ? WHERE `store_id` = ? AND `account_id` = ?");
+	    $statement->execute(array($deposit_amount, $store_id, $account_id));
 
-	    $statement = $this->db->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + $deposit_amount WHERE `id` = ?");
-	    $statement->execute(array($account_id));
+	    $statement = $this->db->prepare("UPDATE `bank_accounts` SET `total_deposit` = `total_deposit` + ? WHERE `id` = ?");
+	    $statement->execute(array($deposit_amount, $account_id));
 
 
 	    if (isset($data['capital']) && $data['capital'] > 0) {
@@ -54,8 +54,11 @@ class ModelBanking extends Model
 	public function getTransactions($type, $store_id = null, $limit = 10)
 	{
 		$store_id = $store_id ? $store_id : store_id();
+		// El limite se acota y se castea antes de interpolarse: MySQL no admite
+		// un placeholder en LIMIT.
+		$limit = max(1, min((int)$limit, 1000000));
 		$statement = $this->db->prepare("SELECT `bank_transaction_info`.*, `bank_transaction_price`.* FROM `bank_transaction_info` 
-			LEFT JOIN `bank_transaction_price` ON `bank_transaction_info`.`ref_no` = `bank_transaction_price`.`ref_no` 
+			LEFT JOIN `bank_transaction_price` ON (`bank_transaction_info`.`ref_no` = `bank_transaction_price`.`ref_no`) 
 			WHERE `bank_transaction_info`.`store_id` = ? AND `bank_transaction_info`.`transaction_type` = ? ORDER BY `bank_transaction_info`.`created_at` DESC LIMIT $limit");
 		$statement->execute(array($store_id, $type));
 		return $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -77,12 +80,16 @@ class ModelBanking extends Model
 		$where_query = "`bank_transaction_info`.`store_id` = ? AND `bank_transaction_price`.`price_id` BETWEEN ? AND ?
 			AND `transaction_type` = ?";
 		if ($account_id) {
-			$where_query .= " AND `account_id` = '{$account_id}'";
+			$where_query .= " AND `account_id` = ?";
 		}
 		$statement = $this->db->prepare("SELECT SUM(`bank_transaction_price`.`amount`) as `total` FROM `bank_transaction_info` 
 			LEFT JOIN `bank_transaction_price` ON (`bank_transaction_info`.`info_id` = `bank_transaction_price`.`info_id`) 
 			WHERE {$where_query} ORDER BY `price_id` ASC");
-		$statement->execute(array($store_id, 1, ((int)$price_id)-1, 'withdraw'));
+		$args = array($store_id, 1, ((int)$price_id)-1, 'withdraw');
+		if ($account_id) {
+			$args[] = $account_id;
+		}
+		$statement->execute($args);
 		$bank_transaction = $statement->fetch(PDO::FETCH_ASSOC);
 		return $bank_transaction ? $bank_transaction['total'] : 0;
 	}
@@ -93,12 +100,16 @@ class ModelBanking extends Model
 		$where_query = "`bank_transaction_info`.`store_id` = ? AND `bank_transaction_info`.`transaction_type` = 'deposit'
 			AND `bank_transaction_price`.`price_id` BETWEEN ? AND ?";
 		if ($account_id) {
-			$where_query .= " AND `account_id` = '{$account_id}'";
+			$where_query .= " AND `account_id` = ?";
 		}
 		$statement = $this->db->prepare("SELECT SUM(`bank_transaction_price`.`amount`) as `total` FROM `bank_transaction_info` 
 			LEFT JOIN `bank_transaction_price` ON (`bank_transaction_info`.`info_id` = `bank_transaction_price`.`info_id`) 
 			WHERE {$where_query}  ORDER BY `bank_transaction_price`.`price_id` ASC");
-		$statement->execute(array($store_id, 1, ((int)$price_id)-1));
+		$args = array($store_id, 1, ((int)$price_id)-1);
+		if ($account_id) {
+			$args[] = $account_id;
+		}
+		$statement->execute($args);
 		$bank_transaction = $statement->fetch(PDO::FETCH_ASSOC);
 		return isset($bank_transaction['total']) ? $bank_transaction['total'] : 0;
 	}
