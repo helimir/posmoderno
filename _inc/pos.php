@@ -59,13 +59,21 @@ if ($request->server['REQUEST_METHOD'] == 'GET' && isset($request->get['action_t
 if ($request->server['REQUEST_METHOD'] == 'GET' && isset($request->get['action_type']) && $request->get['action_type'] == 'CUSTOMERLIST') {
 	try {
 
+		// El limite es un entero acotado por el codigo: se puede interpolar.
 		$limit = isset($request->get['limit']) ? (int)$request->get['limit'] : 20;
-		$field = $request->get['field'];
-		$query_string = $request->get['query_string'];
+		$limit = max(1, min($limit, 100));
+		// La columna se valida contra una lista blanca: un identificador no se
+		// parameteriza, se valida. El VALOR si se parameteriza.
+		$field = safe_column(
+			array('customer_id', 'customer_name', 'customer_email', 'customer_mobile', 'customer_address', 'gtin'),
+			isset($request->get['field']) ? $request->get['field'] : '',
+			'customer_name'
+		);
+		$query_string = isset($request->get['query_string']) ? trim((string) $request->get['query_string']) : '';
 		$statement = db()->prepare("SELECT * FROM `customers` 
 			LEFT JOIN `customer_to_store` c2s ON (`customers`.`customer_id` = `c2s`.`customer_id`)
-			WHERE UPPER($field) LIKE '" . strtoupper($query_string) . "%' AND `c2s`.`store_id` = ? AND `c2s`.`status` = ? GROUP BY `customers`.`customer_id` ORDER BY `customers`.`customer_id` DESC LIMIT $limit");
-		$statement->execute(array(store_id(), 1));
+			WHERE UPPER(`$field`) LIKE ? AND `c2s`.`store_id` = ? AND `c2s`.`status` = ? GROUP BY `customers`.`customer_id` ORDER BY `customers`.`customer_id` DESC LIMIT $limit");
+		$statement->execute(array(strtoupper($query_string) . '%', store_id(), 1));
 		$customers = $statement->fetchAll(PDO::FETCH_ASSOC);
 		
 		$customer_array = array();

@@ -924,3 +924,20 @@ function mergeArray($array1,$array2)
     }
     return $mergedArray;
 }
+/**
+ * Una columna de una LISTA BLANCA.
+ *
+ * Los identificadores (nombres de columna) NUNCA se interpolan desde el
+ * request: un identificador no se puede parameterizar, se valida. Un valor
+ * SI se parameteriza con `?`.
+ *
+ * @param  array<int, string>  $allowed
+ * @param  mixed  $requested
+ * @param  string|null  $default  Columna usada cuando la pedida no es valida.
+ */
+function safe_column($allowed, $requested, $default = null)
+{
+    $requested = (string) $requested;
+
+    return in_array($requested, $allowed, true) ? $requested : $default;
+}

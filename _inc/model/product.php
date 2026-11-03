@@ -455,8 +455,20 @@ class ModelProduct extends Model
 		}
 		$limit_query = NULL;
 		if (isset($data['start']) && isset($data['limit'])) {
-			$limit_query =  " LIMIT $start,$limit";
+			// El limite se acota y se castea antes de interpolarse: venia de
+			// `extract($data)` y era un vector de inyeccion.
+			$start = max(0, (int) $data['start']);
+			$limit = max(1, min((int) $data['limit'], 1000));
+			$limit_query =  " LIMIT {$start},{$limit}";
 		}
+		// La columna se valida contra una lista blanca: un identificador no se
+		// parameteriza, se valida. El VALOR si se parameteriza.
+		$field = safe_column(
+			array('p_name', 'p_code', 'hsn_code', 'barcode_symbology'),
+			isset($data['field']) ? $data['field'] : '',
+			'p_name'
+		);
+		$search = isset($query_string) ? trim((string) $query_string) : '';
 		if (!$query_string) {
 			if ($category_id) {
 				$statement = $this->db->prepare("SELECT * FROM `products` 
@@ -478,13 +490,13 @@ class ModelProduct extends Model
 			if ($category_id) {
 				$statement = $this->db->prepare("SELECT * FROM `products` 
 				LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`) 
-				WHERE `p2s`.`store_id` = ? AND (`p2s`.`quantity_in_stock` > 0 OR `products`.`p_type` = 'service') AND (UPPER($field) LIKE '" . strtoupper($query_string) . "%' OR `products`.`p_code` = '{$query_string}') AND `p2s`.`status` = ? AND `products`.`category_id` = ?{$where_query}{$limit_query}");
-				$statement->execute(array($store_id, 1, $category_id));
+				WHERE `p2s`.`store_id` = ? AND (`p2s`.`quantity_in_stock` > 0 OR `products`.`p_type` = 'service') AND (UPPER(`$field`) LIKE ? OR `products`.`p_code` = ?) AND `p2s`.`status` = ? AND `products`.`category_id` = ?{$where_query}{$limit_query}");
+				$statement->execute(array($store_id, strtoupper($search) . '%', $search, 1, $category_id));
 			} else {
 				$statement = $this->db->prepare("SELECT * FROM `products` 
 				LEFT JOIN `product_to_store` p2s ON (`products`.`p_id` = `p2s`.`product_id`) 
-				WHERE `p2s`.`store_id` = ? AND (`p2s`.`quantity_in_stock` > 0 OR `products`.`p_type` = 'service') AND (UPPER($field) LIKE '" . strtoupper($query_string) . "%' OR `products`.`p_code` = '{$query_string}') AND `p2s`.`status` = ?{$where_query}{$limit_query}");
-				$statement->execute(array($store_id, 1));
+				WHERE `p2s`.`store_id` = ? AND (`p2s`.`quantity_in_stock` > 0 OR `products`.`p_type` = 'service') AND (UPPER(`$field`) LIKE ? OR `products`.`p_code` = ?) AND `p2s`.`status` = ?{$where_query}{$limit_query}");
+				$statement->execute(array($store_id, strtoupper($search) . '%', $search, 1));
 			}
 			$products = $statement->fetchAll(PDO::FETCH_ASSOC);
 		}
